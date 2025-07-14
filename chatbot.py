@@ -13,20 +13,19 @@ from tools import recommend_songs
 llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0, openai_api_key=OPENAI_API_KEY)
 
 @tool
-def recommend_songs_tool(search_history: list[str], liked_songs: list[int], message: Optional[str] = None) -> dict:     
+def recommend_songs_tool(favorites: list[int], message: Optional[str] = None) -> dict:     
     """
-    Provides song recommendations based on user's search history and liked songs.
+    Provides song recommendations based on user's favorites.
     Args:
-        search_history (list[str]): A list of keywords from user's search history.
-        liked_songs (list[int]): A list of song IDs that the user has liked.
+        favorites (list[int]): A list of song IDs that the user has liked.
+        message (str, optional): The user's message or query.
     """
     try:
-        recommended_songs_list = recommend_songs(search_history, liked_songs, message)
+        recommended_songs_list = recommend_songs(favorites, message)
 
         return {
             "recommended_songs": recommended_songs_list,
-            "search_history": search_history,
-            "liked_songs": liked_songs
+            "favorites": favorites
         }
 
     except Exception as e:

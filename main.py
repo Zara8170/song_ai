@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 import uvicorn
 from typing import List, Optional
 from dotenv import load_dotenv
@@ -13,14 +13,25 @@ load_dotenv()
 app = FastAPI()
 
 class RecommendationRequest(BaseModel):
-    message: Optional[str] = None
-    search_history: List[str]
-    liked_songs: List[int]
+    text: str
+    favorite_song_ids: List[int] = Field(
+        default_factory=list,
+        alias="favorite_song_ids"
+    )
+    
+    @field_validator("favorite_song_ids", mode="before")
+    @classmethod
+    def _cast_str_to_int(cls, v):
+        if isinstance(v, list):
+            return [int(x) for x in v if isinstance(x, (int, str)) and str(x).isdigit()]
+        return v
 
 class ChatRequest(BaseModel):
-    message: str
-    search_history: Optional[List[str]] = None
-    liked_songs: Optional[List[int]] = None
+    text: str
+    favorite_song_ids: List[int] = Field(
+        default_factory=list,
+        alias="favorite_song_ids"
+    )
 
 @app.get("/")
 def read_root():
@@ -28,15 +39,10 @@ def read_root():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    """
-    Handles chat requests by invoking the LangChain agent.
-    """
     try:
-        agent_input = {"input": request.message}
-        if request.search_history is not None:
-            agent_input["search_history"] = request.search_history
-        if request.liked_songs is not None:
-            agent_input["liked_songs"] = request.liked_songs
+        agent_input = {"input": request.text}
+        if request.favorite_song_ids is not None:
+            agent_input["favorites"] = request.favorite_song_ids
 
         result = agent_executor.invoke(agent_input)
         answer = result.get("output", "죄송합니다, 답변을 찾을 수 없습니다.")
@@ -47,27 +53,20 @@ async def chat(request: ChatRequest):
 
 @app.post("/recommend")
 async def recommend(request: RecommendationRequest):
-    """
-    Handles song recommendation requests from the backend server.
-    """
     try:
-        user_message = request.message or ""
-        recommended_songs = recommend_songs(request.search_history, request.liked_songs, user_message)
-        
-        if not recommended_songs:
-            return {"recommendations": [], "message": "추천할 노래를 찾지 못했습니다."}
+        user_message = request.text
+        favorite_song_ids = request.favorite_song_ids
 
-        formatted_recommendations = []
-        for song in recommended_songs:
-            formatted_recommendations.append(f"{song.get('title_kr', '제목 없음')} - {song.get('artist_kr', '아티스트 없음')} - {song.get('tj_number', '번호 없음')} - {song.get('ky_number', '번호 없음')}")
-        
-        recommendation_text = "다음 노래들을 추천합니다: " + ", ".join(formatted_recommendations)
-        
-        return {"recommendations": recommended_songs, "message": recommendation_text}
+        answer_text = recommend_songs(favorite_song_ids, user_message)
+
+        return {
+            "message": answer_text
+        }
 
     except Exception as e:
         print(f"An error occurred during recommendation: {e}")
-        raise HTTPException(status_code=500, detail=f"Recommendation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Recommendation error: {e}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
