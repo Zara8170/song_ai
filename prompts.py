@@ -1,46 +1,48 @@
 from langchain_core.prompts import PromptTemplate
 
-AGENT_PROMPT = PromptTemplate.from_template(
+RECOMMEND_PROMPT = PromptTemplate.from_template(
     """
-You are a helpful assistant whose role is to recommend karaoke songs to users.
+아래는 사용자의 즐겨찾기 곡 목록입니다:
+{favorites}
 
-Here is the list of candidate songs:
+아래는 추천 후보 곡 목록입니다:
 {song_list}
 
-User message: {user_message}
-Favorite songs: {favorites}
+위 후보 목록에서 사용자의 취향에 가장 적합한 5곡을 골라 JSON 형식으로
+반환하세요.
 
-Select 5 songs from the candidate list that best match the user's taste.
-Recommend only songs that appear in the candidate list, and include each song's title, artist, tj_number, and ky_number.
-Do not add any closing remarks (e.g., \"Enjoy listening\").
-Always answer in Korean.
+**반드시 위 후보 목록(데이터베이스) 안에 있는 곡만 추천하세요.**
 
-User: {input}
+JSON 형식(불필요한 텍스트 금지):
 
-{agent_scratchpad}
+{{
+  "recommended_songs": [
+    {{
+      "title": "...",
+      "artist": "...",
+      "tj_number": "...",
+      "ky_number": "..."
+    }}
+  ]
+}}
+
+배열에는 정확히 5곡만 포함해야 합니다.
 """
 )
 
-RECOMMEND_PROMPT = PromptTemplate.from_template(
+GROUP_TAGLINE_PROMPT = PromptTemplate.from_template(
     """
-Below is the user's favorite song list:
-{favorites}
+너는 노래방 추천 어플의 추천 설명 문구를 쓰는 도우미야.
+- 주어진 [그룹]의 특징과 [대표곡]을 참고해 **한 줄**(50자 이내)로 임팩트 있게 써 줘.
+- 말투: 밝고 간결 • 불필요한 수식 X
+- 허용 이모지: 🎤✨🔥 중 0~1개
 
-Below is the list of candidate songs for recommendation:
-{song_list}
+[그룹]
+{label}
 
-From the above candidate list, recommend 5 songs that best match the user's taste in the following markdown format:
+[대표곡]
+{sample_songs}
 
-Here are 5 songs recommended based on your favorite songs:
-
-1. **Song Title** - Artist  
-   tj_number: ...  
-   ky_number: ...  
-2. ...
-
-Number each song, make the song title bold, artist in regular text, and display tj_number and ky_number on separate lines for each song.
-**You must only recommend songs from the candidate list above (from the database). Do not invent or add any songs that are not in the list.**
-Always end with the sentence: 'I hope these songs match your taste!'
-Always answer in Korean.
+한국어로 작성해.
 """
 )
