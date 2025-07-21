@@ -7,3 +7,4 @@ SQLAlchemy
 PyMySQL
 python-dotenv
 elasticsearch
+redis

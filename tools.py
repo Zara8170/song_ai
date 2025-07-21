@@ -48,7 +48,6 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
     sorted_groups = sorted(grouped.items(), key=lambda kv: -len(kv[1]))[:4]
     payload = []
     
-    # Track all songs added to prevent duplicates across groups
     used_songs = set()
     if favorite_song_ids is None:
         favorite_song_ids = []
@@ -57,16 +56,13 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
         norm_songs = []
         
         for s in songs:
-            # Skip if song is in favorites
             song_id = s.get("song_id")
             if song_id and song_id in favorite_song_ids:
                 continue
                 
-            # Get title and artist for uniqueness check
             title, artist = _get_title_artist(s)
             song_key = f"{title}|{artist}"
             
-            # Skip if this song was already added to another group
             if song_key in used_songs:
                 continue
                 
@@ -79,7 +75,7 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
                 "ky_number": s.get("ky_number"),
             })
         
-        if norm_songs:  # Only add groups that have songs after filtering
+        if norm_songs:
             payload.append({
                 "label": label,
                 "songs": norm_songs,
@@ -87,7 +83,7 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
             })
     return payload
 
-def get_candidate_songs(favorite_song_ids: list[int], limit: int = 30) -> list[dict]:
+def get_candidate_songs(favorite_song_ids: list[int], limit: int = 60) -> list[dict]:
     db_host = os.getenv("DB_HOST")
     db_port = int(os.getenv("DB_PORT"))
     db_user = os.getenv("DB_USER")
