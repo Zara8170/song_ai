@@ -43,26 +43,48 @@ def _make_tagline(label: str, songs: list[dict]) -> str:
         GROUP_TAGLINE_PROMPT.format(label=label, sample_songs=sample_txt)
     ).content.strip()
 
-def _build_grouped_payload(recs: list[dict]) -> list[dict]:
+def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None) -> list[dict]:
     grouped = _group_songs(recs)
     sorted_groups = sorted(grouped.items(), key=lambda kv: -len(kv[1]))[:4]
     payload = []
-
+    
+    # Track all songs added to prevent duplicates across groups
+    used_songs = set()
+    if favorite_song_ids is None:
+        favorite_song_ids = []
+    
     for label, songs in sorted_groups:
-        norm_songs = [
-            {
-                "title":  _get_title_artist(s)[0],
-                "artist_kr": _get_title_artist(s)[1],
+        norm_songs = []
+        
+        for s in songs:
+            # Skip if song is in favorites
+            song_id = s.get("song_id")
+            if song_id and song_id in favorite_song_ids:
+                continue
+                
+            # Get title and artist for uniqueness check
+            title, artist = _get_title_artist(s)
+            song_key = f"{title}|{artist}"
+            
+            # Skip if this song was already added to another group
+            if song_key in used_songs:
+                continue
+                
+            used_songs.add(song_key)
+            
+            norm_songs.append({
+                "title": title,
+                "artist_kr": artist,
                 "tj_number": s.get("tj_number"),
                 "ky_number": s.get("ky_number"),
-            }
-            for s in songs
-        ]
-        payload.append({
-            "label": label,
-            "songs": norm_songs,
-            "tagline": _make_tagline(label, norm_songs),
-        })
+            })
+        
+        if norm_songs:  # Only add groups that have songs after filtering
+            payload.append({
+                "label": label,
+                "songs": norm_songs,
+                "tagline": _make_tagline(label, norm_songs),
+            })
     return payload
 
 def get_candidate_songs(favorite_song_ids: list[int], limit: int = 30) -> list[dict]:
@@ -116,6 +138,6 @@ def recommend_songs(favorite_song_ids: list[int]) -> dict:
     if not candidate_songs:
         return {"error": "추천할 노래를 찾지 못했습니다."}
 
-    groups_payload = _build_grouped_payload(candidate_songs)
+    groups_payload = _build_grouped_payload(candidate_songs, favorite_song_ids)
 
     return {"groups": groups_payload}
