@@ -7,7 +7,7 @@ from config import OPENAI_API_KEY
 from prompts import RECOMMEND_PROMPT
 from collections import Counter
 from collections import defaultdict
-from random import sample
+from random import sample, uniform, choice
 
 def _get_title_artist(song: dict) -> tuple[str, str]:
     """
@@ -30,18 +30,46 @@ def _group_songs(recs: list[dict]) -> dict[str, list[dict]]:
 
 def _make_tagline(label: str, songs: list[dict]) -> str:
     from prompts import GROUP_TAGLINE_PROMPT
-    reps = sample(songs, k=min(5, len(songs)))
-
+    
+    # 더 다양한 결과를 위해 랜덤 샘플링과 temperature 조정
+    reps = sample(songs, k=min(3, len(songs)))  # 3개로 줄여서 더 집중된 분석
+    
     sample_txt = " / ".join(
         f"{_get_title_artist(s)[0]} - {_get_title_artist(s)[1]}" for s in reps
     )
-    llm = ChatOpenAI(model_name="gpt-4o-mini",
-                     temperature=0.7,
-                     max_tokens=70,
-                     openai_api_key=OPENAI_API_KEY)
-    return llm.invoke(
-        GROUP_TAGLINE_PROMPT.format(label=label, sample_songs=sample_txt)
-    ).content.strip()
+    
+    # 더 창의적인 결과를 위해 높은 temperature 사용
+    random_temp = uniform(0.8, 1.2)  # 0.8~1.2 사이의 랜덤 temperature
+    
+    # 짧은 tagline을 위해 토큰 수 제한
+    random_tokens = choice([30, 40, 50])
+    
+    llm = ChatOpenAI(
+        model_name="gpt-4o-mini",
+        temperature=random_temp,
+        max_tokens=random_tokens,
+        openai_api_key=OPENAI_API_KEY
+    )
+    
+    # 2번 생성해서 더 짧고 임팩트 있는 것을 선택
+    responses = []
+    for _ in range(2):
+        try:
+            response = llm.invoke(
+                GROUP_TAGLINE_PROMPT.format(label=label, sample_songs=sample_txt)
+            ).content.strip()
+            
+            # 따옴표 제거
+            response = response.strip('"').strip("'").strip()
+            responses.append(response)
+        except:
+            continue
+    
+    if not responses:
+        return f"{label}의 매력적인 선곡 🎵"
+    
+    # 더 짧은 것을 선택 (임팩트를 위해)
+    return min(responses, key=len) if len(responses) > 1 else responses[0]
 
 def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None) -> list[dict]:
     grouped = _group_songs(recs)
