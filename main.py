@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 import uvicorn
 from typing import List
 from dotenv import load_dotenv
-import os, json, redis, atexit
+import os, json, redis, atexit, time
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
@@ -20,6 +20,8 @@ redis_client = redis.Redis(
     password=os.getenv("REDIS_PASSWORD"), 
     decode_responses=True,
 )
+
+print(redis_client.ping())
 
 app = FastAPI()
 

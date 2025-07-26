@@ -1,0 +1,357 @@
+2025-07-25 07:19:11,617 - main - INFO - 🚀 [SYSTEM] AI Song Recommender 서버 시작!
+2025-07-25 07:19:11,617 - main - INFO - 📝 [SYSTEM] 로그 시스템 초기화 완료 - 콘솔 및 파일 출력 활성화
+2025-07-25 07:19:11,645 - main - INFO - 🔥 [STARTUP] FastAPI 애플리케이션 시작 완료!
+2025-07-25 07:19:11,646 - main - INFO - 📡 [STARTUP] 추천 API 준비 완료 - /recommend 엔드포인트 활성화
+2025-07-25 07:19:16,700 - main - INFO - 🎵 [START] 추천 요청 시작 - RequestID: 2_1753427956
+2025-07-25 07:19:16,701 - main - INFO - 📊 [INPUT] MemberID: 2, 즐겨찾기 곡 수: 4
+2025-07-25 07:19:16,701 - main - INFO - 🎶 [INPUT] 즐겨찾기 곡 IDs: [1, 65, 30, 15]
+2025-07-25 07:19:16,702 - main - INFO - 🔍 [CACHE] 캐시 확인 시작 - Key: recommend:2
+2025-07-25 07:19:16,702 - main - INFO - ✅ [CACHE HIT] 캐시된 결과 발견! 소요시간: 0.001초
+2025-07-25 07:19:16,703 - main - INFO - 🏁 [END] 캐시 응답 완료 - 총 소요시간: 0.003초
+2025-07-25 07:19:31,436 - main - INFO - 🎵 [START] 추천 요청 시작 - RequestID: 2_1753427971
+2025-07-25 07:19:31,436 - main - INFO - 📊 [INPUT] MemberID: 2, 즐겨찾기 곡 수: 4
+2025-07-25 07:19:31,437 - main - INFO - 🎶 [INPUT] 즐겨찾기 곡 IDs: [1, 65, 30, 15]
+2025-07-25 07:19:31,437 - main - INFO - 🔍 [CACHE] 캐시 확인 시작 - Key: recommend:2
+2025-07-25 07:19:31,438 - main - INFO - ❌ [CACHE MISS] 캐시 없음, 새로운 추천 진행. 확인 소요시간: 0.001초
+2025-07-25 07:19:31,438 - main - INFO - 🤖 [AI ENGINE] AI 추천 엔진 시작
+2025-07-25 07:19:31,438 - tools - INFO - 🚀 [RECOMMEND ENGINE] 추천 엔진 시작
+2025-07-25 07:19:31,439 - tools - INFO - 📥 [RECOMMEND ENGINE] 입력 즐겨찾기: [1, 65, 30, 15]
+2025-07-25 07:19:31,440 - tools - INFO - 💖 [FAVORITES] 즐겨찾기 곡 정보 조회 시작 - 대상: 4곡
+2025-07-25 07:19:31,448 - tools - INFO - 🔗 [FAVORITES] DB 연결 완료 - 소요시간: 0.008초
+2025-07-25 07:19:31,451 - tools - INFO - ✅ [FAVORITES] 즐겨찾기 조회 완료 - 4곡 조회됨, 총 소요시간: 0.011초
+2025-07-25 07:19:31,451 - tools - INFO - 🧠 [PREFERENCE ANALYSIS] 사용자 취향 분석 시작
+2025-07-25 07:19:31,452 - tools - INFO - 📋 [PREFERENCE ANALYSIS] 분석 대상 곡 수: 4개
+2025-07-25 07:19:31,452 - tools - INFO - 🎼 [PREFERENCE ANALYSIS] 분석 곡 목록:
+2025-07-25 07:19:31,452 - tools - INFO -    1. 활과 화살 - 요네즈 켄시 (J-pop 댄스팝)
+2025-07-25 07:19:31,453 - tools - INFO -    2. 불가사의의 카르테 - 코다마 아메코 (J-pop  서정 팝)
+2025-07-25 07:19:31,453 - tools - INFO -    3. 용사 - 요아소비 (팝)
+2025-07-25 07:19:31,453 - tools - INFO -    4. 말린 꽃 - 이마세 (팝)
+2025-07-25 07:19:31,453 - tools - INFO - 🤖 [PREFERENCE AI] AI 취향 분석 요청 시작
+2025-07-25 07:19:33,872 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:19:33,886 - tools - INFO - ✅ [PREFERENCE AI] AI 응답 완료 - 소요시간: 2.432초
+2025-07-25 07:19:33,886 - tools - INFO - ✅ [PREFERENCE ANALYSIS] 취향 분석 성공 완료 - 총 소요시간: 2.435초
+2025-07-25 07:19:33,887 - tools - INFO - 🎯 [PREFERENCE RESULT] 선호 장르: ['J-pop 댄스팝', 'J-pop 서정 팝', '팝']
+2025-07-25 07:19:33,887 - tools - INFO - 🎭 [PREFERENCE RESULT] 선호 분위기: ['에너지', '감성적']
+2025-07-25 07:19:33,888 - tools - INFO - 📝 [PREFERENCE RESULT] 전체 취향: 에너지 넘치는 곡과 감성적인 곡을 모두 좋아하는 취향.
+2025-07-25 07:19:33,888 - tools - INFO - 🗄️  [DB QUERY] 후보곡 조회 시작 - 목표: 100곡
+2025-07-25 07:19:33,896 - tools - INFO - 🔗 [DB QUERY] DB 연결 완료 - 소요시간: 0.008초
+2025-07-25 07:19:33,897 - tools - INFO - 🎵 [DB QUERY] 즐겨찾기 기반 후보곡 조회 - 즐겨찾기: 4곡
+2025-07-25 07:19:33,900 - tools - INFO - 📋 [DB QUERY] 즐겨찾기 정보 조회 완료 - 4곡, 소요시간: 0.003초
+2025-07-25 07:19:33,901 - tools - INFO - 🎭 [DB QUERY] 추출된 장르: ['J-pop  서정 팝', '팝', 'J-pop 댄스팝']
+2025-07-25 07:19:33,901 - tools - INFO - 🎤 [DB QUERY] 추출된 아티스트: ['요아소비', '요네즈 켄시', '이마세', '코다마 아메코']
+2025-07-25 07:19:33,905 - tools - INFO - �� [DB QUERY] 유사곡 조회 완료 - 13곡, 소요시간: 0.003초
+2025-07-25 07:19:33,911 - tools - INFO - 🎲 [DB QUERY] 랜덤곡 조회 완료 - 87곡, 소요시간: 0.006초
+2025-07-25 07:19:33,912 - tools - INFO - ✅ [DB QUERY] 후보곡 조회 완료 - 총 100곡, 총 소요시간: 0.024초
+2025-07-25 07:19:33,914 - tools - INFO - 🎯 [AI RECOMMEND] AI 곡 추천 시작
+2025-07-25 07:19:33,914 - tools - INFO - 📊 [AI RECOMMEND] 후보곡 수: 100개, 목표 추천곡 수: 20개
+2025-07-25 07:19:33,915 - tools - INFO - 📝 [AI RECOMMEND] 후보곡 포맷팅 완료 - 소요시간: 0.000초
+2025-07-25 07:19:33,916 - tools - INFO - 🎭 [AI RECOMMEND] 사용자 취향 정보 활용
+2025-07-25 07:19:33,916 - tools - INFO - 🤖 [AI RECOMMEND] AI 추천 요청 시작 (GPT-4o-mini)
+2025-07-25 07:20:03,163 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:03,166 - tools - INFO - ✅ [AI RECOMMEND] AI 추천 응답 완료 - 소요시간: 29.250초
+2025-07-25 07:20:03,167 - tools - INFO - ✅ [AI RECOMMEND] JSON 파싱 성공 - 파싱 소요시간: 0.000초
+2025-07-25 07:20:03,167 - tools - INFO - 🎵 [AI RECOMMEND] 추천곡 수: 19개
+2025-07-25 07:20:03,168 - tools - INFO - ✅ [AI RECOMMEND] AI 곡 추천 완료 - 총 소요시간: 29.253초
+2025-07-25 07:20:03,168 - tools - INFO -    1. 아이돌 - 요아소비 | 에너지가 넘치는 댄스 팝으로, 당신의 취향에 잘 맞습니다....
+2025-07-25 07:20:03,168 - tools - INFO -    2. 행복 주문? - 이마세 | 감성적인 멜로디로 감정에 호소하는 곡입니다....
+2025-07-25 07:20:03,169 - tools - INFO -    3. 반짝 - 후지이 카제 | 신나는 리듬으로 즐거운 분위기를 만끽할 수 있습니다....
+2025-07-25 07:20:03,169 - tools - INFO -    4. 지구본 - 요네즈 켄시 | 감성적인 가사와 멜로디가 매력적인 곡입니다....
+2025-07-25 07:20:03,170 - tools - INFO -    5. 해피 엔딩 - 에일 | 따뜻한 감성을 담고 있어 듣기 좋은 곡입니다....
+2025-07-25 07:20:03,170 - tools - INFO - 🔗 [MATCHING] AI 추천곡과 DB 매칭 시작
+2025-07-25 07:20:03,170 - tools - INFO - 📊 [MATCHING] AI 추천곡: 19개, DB 후보곡: 100개
+2025-07-25 07:20:03,171 - tools - INFO - ✅ [MATCHING] 매칭 완료 - 소요시간: 0.001초
+2025-07-25 07:20:03,171 - tools - INFO - 📈 [MATCHING] 매칭 결과: 19개 중 19개 매칭 (100.0%)
+2025-07-25 07:20:03,171 - tools - INFO - 🔨 [BUILD PAYLOAD] 최종 응답 페이로드 생성 시작
+2025-07-25 07:20:03,172 - tools - INFO - 📂 [GROUPING] 곡 그룹화 시작 - 대상곡: 19개
+2025-07-25 07:20:03,172 - tools - INFO - ✅ [GROUPING] 그룹화 완료 - 소요시간: 0.000초
+2025-07-25 07:20:03,172 - tools - INFO - 📊 [GROUPING] 생성된 그룹 수: 3개
+2025-07-25 07:20:03,173 - tools - INFO -    📁 에너지: 8곡
+2025-07-25 07:20:03,173 - tools - INFO -    📁 감성적: 10곡
+2025-07-25 07:20:03,173 - tools - INFO -    📁 강렬: 1곡
+2025-07-25 07:20:03,174 - tools - INFO - �� [BUILD PAYLOAD] 제외할 즐겨찾기 곡 수: 4개
+2025-07-25 07:20:03,174 - tools - INFO - 🏷️  [TAGLINE] '감성적' 그룹 태그라인 생성 시작
+2025-07-25 07:20:03,175 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 너를 위해 나를 위해 - 아쿠아스 / 지구본 - 요네즈 켄시 / 행복 주문? - 이마세
+2025-07-25 07:20:03,175 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 1.16, Max Tokens: 30
+2025-07-25 07:20:04,052 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:04,062 - tools - INFO -    시도 1: 감성의 노래, 마음을 울리다! 🎶✨
+2025-07-25 07:20:04,989 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:04,994 - tools - INFO -    시도 2: 마음의 무게를 덜어드릴게요 🎶✨
+2025-07-25 07:20:04,995 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.819초, 총 소요시간: 1.820초
+2025-07-25 07:20:04,995 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 마음의 무게를 덜어드릴게요 🎶✨
+2025-07-25 07:20:04,996 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '감성적' 추가: 10곡
+2025-07-25 07:20:04,996 - tools - INFO - 🏷️  [TAGLINE] '에너지' 그룹 태그라인 생성 시작
+2025-07-25 07:20:04,997 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 상처받았지만, 사랑해. - 츠유 / 드리머 - 에이코 / 청춘 콤플렉스 - 결속밴드
+2025-07-25 07:20:04,997 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 0.93, Max Tokens: 30
+2025-07-25 07:20:05,760 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:05,768 - tools - INFO -    시도 1: 사랑의 상처, 에너지로 치유! 🎵✨
+2025-07-25 07:20:06,819 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:06,823 - tools - INFO -    시도 2: 상처를 넘어, 사랑의 에너지! 🎵✨
+2025-07-25 07:20:06,824 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.826초, 총 소요시간: 1.827초
+2025-07-25 07:20:06,824 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 사랑의 상처, 에너지로 치유! 🎵✨
+2025-07-25 07:20:06,824 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '에너지' 추가: 8곡
+2025-07-25 07:20:06,825 - tools - INFO - 🏷️  [TAGLINE] '강렬' 그룹 태그라인 생성 시작
+2025-07-25 07:20:06,825 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 왜곡 - 결속밴드
+2025-07-25 07:20:06,825 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 1.09, Max Tokens: 50
+2025-07-25 07:20:08,029 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:08,031 - tools - INFO -    시도 1: 혼란 속의 강렬한 외침! 🔥
+2025-07-25 07:20:08,913 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:20:08,939 - tools - INFO -    시도 2: 왜곡된 진동, 강렬함 한가득! 🔥
+2025-07-25 07:20:08,939 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 2.113초, 총 소요시간: 2.115초
+2025-07-25 07:20:08,940 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 혼란 속의 강렬한 외침! 🔥
+2025-07-25 07:20:08,940 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '강렬' 추가: 1곡
+2025-07-25 07:20:08,941 - tools - INFO - ✅ [BUILD PAYLOAD] 페이로드 생성 완료 - 소요시간: 5.769초
+2025-07-25 07:20:08,941 - tools - INFO - 📊 [BUILD PAYLOAD] 최종 그룹 수: 3개, 총 곡 수: 19개
+2025-07-25 07:20:08,941 - tools - INFO - 🏆 [RECOMMEND ENGINE] 추천 엔진 완료 - 총 소요시간: 37.503초
+2025-07-25 07:20:08,942 - tools - INFO - 📊 [RECOMMEND ENGINE] 최종 결과: 3개 그룹, 19곡 추천
+2025-07-25 07:20:08,942 - main - INFO - 🎯 [AI ENGINE] AI 추천 완료 - 소요시간: 37.504초
+2025-07-25 07:20:08,942 - main - INFO - 📈 [RESULT] 추천 결과 통계:
+2025-07-25 07:20:08,943 - main - INFO -    - 그룹 수: 3개
+2025-07-25 07:20:08,943 - main - INFO -    - 총 추천곡 수: 19개
+2025-07-25 07:20:08,943 - main - INFO -    - AI 취향 분석 성공: True
+2025-07-25 07:20:08,944 - main - INFO -    - AI 추천곡 수: 19개
+2025-07-25 07:20:08,944 - main - INFO -    - 취향 요약: 에너지 넘치는 곡과 감성적인 곡을 모두 좋아하는 취향.
+2025-07-25 07:20:08,944 - main - INFO - 🎼 [GROUP 1] 감성적 - 10곡 | 마음의 무게를 덜어드릴게요 🎶✨
+2025-07-25 07:20:08,945 - main - INFO - 🎼 [GROUP 2] 에너지 - 8곡 | 사랑의 상처, 에너지로 치유! 🎵✨
+2025-07-25 07:20:08,945 - main - INFO - 🎼 [GROUP 3] 강렬 - 1곡 | 혼란 속의 강렬한 외침! 🔥
+2025-07-25 07:20:08,945 - main - INFO - 💾 [CACHE SAVE] 결과 캐시 저장 시작
+2025-07-25 07:20:08,946 - main - INFO - ✅ [CACHE SAVE] 캐시 저장 완료 - 소요시간: 0.001초
+2025-07-25 07:20:08,946 - main - INFO - 🏁 [SUCCESS] 추천 API 성공 완료!
+2025-07-25 07:20:08,947 - main - INFO - ⏱️  [TIMING] 총 소요시간: 37.511초
+2025-07-25 07:20:08,947 - main - INFO - ⏱️  [TIMING] - 캐시 확인: 0.001초
+2025-07-25 07:20:08,948 - main - INFO - ⏱️  [TIMING] - AI 추천: 37.504초
+2025-07-25 07:20:08,948 - main - INFO - ⏱️  [TIMING] - 캐시 저장: 0.001초
+2025-07-25 07:20:08,948 - main - INFO - 🔚 [END] RequestID: 2_1753427971 완료
+2025-07-25 07:25:07,976 - main - INFO - 🚀 [SYSTEM] AI Song Recommender 서버 시작!
+2025-07-25 07:25:07,977 - main - INFO - 📝 [SYSTEM] 로그 시스템 초기화 완료 - 콘솔 및 파일 출력 활성화
+2025-07-25 07:25:08,002 - main - INFO - 🔥 [STARTUP] FastAPI 애플리케이션 시작 완료!
+2025-07-25 07:25:08,003 - main - INFO - 📡 [STARTUP] 추천 API 준비 완료 - /recommend 엔드포인트 활성화
+2025-07-25 07:25:23,691 - main - INFO - 🎵 [START] 추천 요청 시작 - RequestID: 2_1753428323
+2025-07-25 07:25:23,691 - main - INFO - 📊 [INPUT] MemberID: 2, 즐겨찾기 곡 수: 4
+2025-07-25 07:25:23,691 - main - INFO - 🎶 [INPUT] 즐겨찾기 곡 IDs: [1, 65, 30, 15]
+2025-07-25 07:25:23,692 - main - INFO - 🔍 [CACHE] 캐시 확인 시작 - Key: recommend:2
+2025-07-25 07:25:23,693 - main - INFO - ❌ [CACHE MISS] 캐시 없음, 새로운 추천 진행. 확인 소요시간: 0.001초
+2025-07-25 07:25:23,693 - main - INFO - 🤖 [AI ENGINE] AI 추천 엔진 시작
+2025-07-25 07:25:23,693 - tools - INFO - 🚀 [RECOMMEND ENGINE] 추천 엔진 시작
+2025-07-25 07:25:23,694 - tools - INFO - 📥 [RECOMMEND ENGINE] 입력 즐겨찾기: [1, 65, 30, 15]
+2025-07-25 07:25:23,694 - tools - INFO - 💖 [FAVORITES] 즐겨찾기 곡 정보 조회 시작 - 대상: 4곡
+2025-07-25 07:25:23,700 - tools - INFO - 🔗 [FAVORITES] DB 연결 완료 - 소요시간: 0.006초
+2025-07-25 07:25:23,703 - tools - INFO - ✅ [FAVORITES] 즐겨찾기 조회 완료 - 4곡 조회됨, 총 소요시간: 0.009초
+2025-07-25 07:25:23,704 - tools - INFO - 🧠 [PREFERENCE ANALYSIS] 사용자 취향 분석 시작
+2025-07-25 07:25:23,704 - tools - INFO - 📋 [PREFERENCE ANALYSIS] 분석 대상 곡 수: 4개
+2025-07-25 07:25:23,705 - tools - INFO - 🎼 [PREFERENCE ANALYSIS] 분석 곡 목록:
+2025-07-25 07:25:23,705 - tools - INFO -    1. 활과 화살 - 요네즈 켄시 (J-pop 댄스팝)
+2025-07-25 07:25:23,706 - tools - INFO -    2. 불가사의의 카르테 - 코다마 아메코 (J-pop  서정 팝)
+2025-07-25 07:25:23,706 - tools - INFO -    3. 용사 - 요아소비 (팝)
+2025-07-25 07:25:23,706 - tools - INFO -    4. 말린 꽃 - 이마세 (팝)
+2025-07-25 07:25:23,706 - tools - INFO - 🤖 [PREFERENCE AI] AI 취향 분석 요청 시작
+2025-07-25 07:25:25,822 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:25,832 - tools - INFO - ✅ [PREFERENCE AI] AI 응답 완료 - 소요시간: 2.125초
+2025-07-25 07:25:25,832 - tools - INFO - ✅ [PREFERENCE ANALYSIS] 취향 분석 성공 완료 - 총 소요시간: 2.129초
+2025-07-25 07:25:25,833 - tools - INFO - 🎯 [PREFERENCE RESULT] 선호 장르: ['J-pop 댄스팝', 'J-pop 서정 팝', '팝']
+2025-07-25 07:25:25,833 - tools - INFO - 🎭 [PREFERENCE RESULT] 선호 분위기: ['에너지', '감성적']
+2025-07-25 07:25:25,834 - tools - INFO - 📝 [PREFERENCE RESULT] 전체 취향: 에너지 넘치면서도 감성적인 곡을 선호하는 취향
+2025-07-25 07:25:25,834 - tools - INFO - 🗄️  [DB QUERY] 후보곡 조회 시작 - 목표: 100곡
+2025-07-25 07:25:25,840 - tools - INFO - 🔗 [DB QUERY] DB 연결 완료 - 소요시간: 0.006초
+2025-07-25 07:25:25,841 - tools - INFO - 🎵 [DB QUERY] 즐겨찾기 기반 후보곡 조회 - 즐겨찾기: 4곡
+2025-07-25 07:25:25,842 - tools - INFO - 📋 [DB QUERY] 즐겨찾기 정보 조회 완료 - 4곡, 소요시간: 0.002초
+2025-07-25 07:25:25,843 - tools - INFO - 🎭 [DB QUERY] 추출된 장르: ['J-pop 댄스팝', '팝', 'J-pop  서정 팝']
+2025-07-25 07:25:25,843 - tools - INFO - 🎤 [DB QUERY] 추출된 아티스트: ['이마세', '요아소비', '코다마 아메코', '요네즈 켄시']
+2025-07-25 07:25:25,846 - tools - INFO - �� [DB QUERY] 유사곡 조회 완료 - 13곡, 소요시간: 0.002초
+2025-07-25 07:25:25,850 - tools - INFO - 🎲 [DB QUERY] 랜덤곡 조회 완료 - 87곡, 소요시간: 0.004초
+2025-07-25 07:25:25,851 - tools - INFO - ✅ [DB QUERY] 후보곡 조회 완료 - 총 100곡, 총 소요시간: 0.017초
+2025-07-25 07:25:25,851 - tools - INFO - 🎯 [AI RECOMMEND] AI 곡 추천 시작
+2025-07-25 07:25:25,852 - tools - INFO - 📊 [AI RECOMMEND] 후보곡 수: 100개, 목표 추천곡 수: 20개
+2025-07-25 07:25:25,852 - tools - INFO - 📝 [AI RECOMMEND] 후보곡 포맷팅 완료 - 소요시간: 0.000초
+2025-07-25 07:25:25,853 - tools - INFO - 🎭 [AI RECOMMEND] 사용자 취향 정보 활용
+2025-07-25 07:25:25,853 - tools - INFO - 🤖 [AI RECOMMEND] AI 추천 요청 시작 (GPT-4o-mini)
+2025-07-25 07:25:45,115 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:45,118 - tools - INFO - ✅ [AI RECOMMEND] AI 추천 응답 완료 - 소요시간: 19.265초
+2025-07-25 07:25:45,119 - tools - INFO - ✅ [AI RECOMMEND] JSON 파싱 성공 - 파싱 소요시간: 0.000초
+2025-07-25 07:25:45,119 - tools - INFO - 🎵 [AI RECOMMEND] 추천곡 수: 18개
+2025-07-25 07:25:45,120 - tools - INFO - ✅ [AI RECOMMEND] AI 곡 추천 완료 - 총 소요시간: 19.268초
+2025-07-25 07:25:45,120 - tools - INFO -    1. 난난w/뭐야ㅋ - 후지이 카제 (팝)
+2025-07-25 07:25:45,120 - tools - INFO -    2. 아이돌 - 요아소비 (일렉트로 팝)
+2025-07-25 07:25:45,121 - tools - INFO -    3. 반짝 - 후지이 카제 (팝)
+2025-07-25 07:25:45,121 - tools - INFO -    4. 해피 엔딩 - 에일 (팝)
+2025-07-25 07:25:45,122 - tools - INFO -    5. 드리머 - 에이코 (J-pop)
+2025-07-25 07:25:45,122 - tools - INFO - 🔗 [MATCHING] AI 추천곡과 DB 매칭 시작
+2025-07-25 07:25:45,122 - tools - INFO - 📊 [MATCHING] AI 추천곡: 18개, DB 후보곡: 100개
+2025-07-25 07:25:45,123 - tools - INFO - ⚠️  [MATCHING] 매칭 실패: 이별의 노래 - 요네즈 켄시
+2025-07-25 07:25:45,123 - tools - INFO - ✅ [MATCHING] 매칭 완료 - 소요시간: 0.001초
+2025-07-25 07:25:45,124 - tools - INFO - 📈 [MATCHING] 매칭 결과: 18개 중 17개 매칭 (94.4%)
+2025-07-25 07:25:45,124 - tools - INFO - 🔄 [MATCHING] 부족분 1곡을 랜덤 선택으로 보충
+2025-07-25 07:25:45,124 - tools - INFO - 🔨 [BUILD PAYLOAD] 최종 응답 페이로드 생성 시작
+2025-07-25 07:25:45,125 - tools - INFO - 📂 [GROUPING] 곡 그룹화 시작 - 대상곡: 18개
+2025-07-25 07:25:45,125 - tools - INFO - ✅ [GROUPING] 그룹화 완료 - 소요시간: 0.000초
+2025-07-25 07:25:45,126 - tools - INFO - 📊 [GROUPING] 생성된 그룹 수: 3개
+2025-07-25 07:25:45,126 - tools - INFO -    📁 에너지: 9곡
+2025-07-25 07:25:45,127 - tools - INFO -    📁 감성적: 6곡
+2025-07-25 07:25:45,127 - tools - INFO -    📁 강렬: 3곡
+2025-07-25 07:25:45,127 - tools - INFO - �� [BUILD PAYLOAD] 제외할 즐겨찾기 곡 수: 4개
+2025-07-25 07:25:45,128 - tools - INFO - 🏷️  [TAGLINE] '에너지' 그룹 태그라인 생성 시작
+2025-07-25 07:25:45,128 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 블링-방-방- - 크리피 넛츠 / 드리머 - 에이코 / 오토나 블루 - 새로운 학교의 리저드
+2025-07-25 07:25:45,129 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 0.90, Max Tokens: 50
+2025-07-25 07:25:45,875 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:45,879 - tools - INFO -    시도 1: 에너지의 파워풀한 사운드! 🎶✨
+2025-07-25 07:25:46,662 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:46,665 - tools - INFO -    시도 2: 에너지로 가득 찬 순간! 🎶
+2025-07-25 07:25:46,666 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.536초, 총 소요시간: 1.538초
+2025-07-25 07:25:46,666 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 에너지로 가득 찬 순간! 🎶
+2025-07-25 07:25:46,666 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '에너지' 추가: 9곡
+2025-07-25 07:25:46,667 - tools - INFO - 🏷️  [TAGLINE] '감성적' 그룹 태그라인 생성 시작
+2025-07-25 07:25:46,667 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 지구본 - 요네즈 켄시 / 해는 다시 뜰 테니까 - 녹황색사회 / 타마키 - 레드윔프스
+2025-07-25 07:25:46,668 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 1.15, Max Tokens: 50
+2025-07-25 07:25:47,238 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:47,242 - tools - INFO -    시도 1: 감성을 노래하다! 🎶✨
+2025-07-25 07:25:48,068 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:48,072 - tools - INFO -    시도 2: 감성을 노래하라! 🎶✨
+2025-07-25 07:25:48,072 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.403초, 총 소요시간: 1.405초
+2025-07-25 07:25:48,073 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 감성을 노래하다! 🎶✨
+2025-07-25 07:25:48,073 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '감성적' 추가: 6곡
+2025-07-25 07:25:48,073 - tools - INFO - 🏷️  [TAGLINE] '강렬' 그룹 태그라인 생성 시작
+2025-07-25 07:25:48,074 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 카페인 - 아키야마 키이로 / 수억광년 - 오모이노타케 / 마음가짐 - 우루
+2025-07-25 07:25:48,075 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 1.10, Max Tokens: 30
+2025-07-25 07:25:48,834 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:48,838 - tools - INFO -    시도 1: 강렬한 감정, 함께 불러요! 🎶
+2025-07-25 07:25:49,779 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:25:49,788 - tools - INFO -    시도 2: 강렬한 열정, 노래로 만끽! 🎤✨
+2025-07-25 07:25:49,789 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.713초, 총 소요시간: 1.715초
+2025-07-25 07:25:49,789 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 강렬한 감정, 함께 불러요! 🎶
+2025-07-25 07:25:49,789 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '강렬' 추가: 3곡
+2025-07-25 07:25:49,790 - tools - INFO - ✅ [BUILD PAYLOAD] 페이로드 생성 완료 - 소요시간: 4.665초
+2025-07-25 07:25:49,790 - tools - INFO - 📊 [BUILD PAYLOAD] 최종 그룹 수: 3개, 총 곡 수: 18개
+2025-07-25 07:25:49,791 - tools - INFO - 🏆 [RECOMMEND ENGINE] 추천 엔진 완료 - 총 소요시간: 26.097초
+2025-07-25 07:25:49,791 - tools - INFO - 📊 [RECOMMEND ENGINE] 최종 결과: 3개 그룹, 18곡 추천
+2025-07-25 07:25:49,792 - main - INFO - 🎯 [AI ENGINE] AI 추천 완료 - 소요시간: 26.099초
+2025-07-25 07:25:49,792 - main - INFO - 📈 [RESULT] 추천 결과 통계:
+2025-07-25 07:25:49,792 - main - INFO -    - 그룹 수: 3개
+2025-07-25 07:25:49,793 - main - INFO -    - 총 추천곡 수: 18개
+2025-07-25 07:25:49,793 - main - INFO -    - AI 취향 분석 성공: True
+2025-07-25 07:25:49,793 - main - INFO -    - AI 추천곡 수: 18개
+2025-07-25 07:25:49,794 - main - INFO -    - 취향 요약: 에너지 넘치면서도 감성적인 곡을 선호하는 취향
+2025-07-25 07:25:49,794 - main - INFO - 🎼 [GROUP 1] 에너지 - 9곡 | 에너지로 가득 찬 순간! 🎶
+2025-07-25 07:25:49,795 - main - INFO - 🎼 [GROUP 2] 감성적 - 6곡 | 감성을 노래하다! 🎶✨
+2025-07-25 07:25:49,796 - main - INFO - 🎼 [GROUP 3] 강렬 - 3곡 | 강렬한 감정, 함께 불러요! 🎶
+2025-07-25 07:25:49,796 - main - INFO - 💾 [CACHE SAVE] 결과 캐시 저장 시작
+2025-07-25 07:25:49,797 - main - INFO - ✅ [CACHE SAVE] 캐시 저장 완료 - 소요시간: 0.001초
+2025-07-25 07:25:49,797 - main - INFO - 🏁 [SUCCESS] 추천 API 성공 완료!
+2025-07-25 07:25:49,798 - main - INFO - ⏱️  [TIMING] 총 소요시간: 26.107초
+2025-07-25 07:25:49,798 - main - INFO - ⏱️  [TIMING] - 캐시 확인: 0.001초
+2025-07-25 07:25:49,798 - main - INFO - ⏱️  [TIMING] - AI 추천: 26.099초
+2025-07-25 07:25:49,798 - main - INFO - ⏱️  [TIMING] - 캐시 저장: 0.001초
+2025-07-25 07:25:49,799 - main - INFO - 🔚 [END] RequestID: 2_1753428323 완료
+2025-07-25 07:30:14,150 - main - INFO - 🎵 [START] 추천 요청 시작 - RequestID: 2_1753428614
+2025-07-25 07:30:14,151 - main - INFO - 📊 [INPUT] MemberID: 2, 즐겨찾기 곡 수: 4
+2025-07-25 07:30:14,151 - main - INFO - 🎶 [INPUT] 즐겨찾기 곡 IDs: [1, 65, 30, 15]
+2025-07-25 07:30:14,151 - main - INFO - 🔍 [CACHE] 캐시 확인 시작 - Key: recommend:2
+2025-07-25 07:30:14,153 - main - INFO - ❌ [CACHE MISS] 캐시 없음, 새로운 추천 진행. 확인 소요시간: 0.001초
+2025-07-25 07:30:14,153 - main - INFO - 🤖 [AI ENGINE] AI 추천 엔진 시작
+2025-07-25 07:30:14,154 - tools - INFO - 🚀 [RECOMMEND ENGINE] 추천 엔진 시작
+2025-07-25 07:30:14,154 - tools - INFO - 📥 [RECOMMEND ENGINE] 입력 즐겨찾기: [1, 65, 30, 15]
+2025-07-25 07:30:14,155 - tools - INFO - 💖 [FAVORITES] 즐겨찾기 곡 정보 조회 시작 - 대상: 4곡
+2025-07-25 07:30:14,161 - tools - INFO - 🔗 [FAVORITES] DB 연결 완료 - 소요시간: 0.006초
+2025-07-25 07:30:14,164 - tools - INFO - ✅ [FAVORITES] 즐겨찾기 조회 완료 - 4곡 조회됨, 총 소요시간: 0.009초
+2025-07-25 07:30:14,164 - tools - INFO - 🧠 [PREFERENCE ANALYSIS] 사용자 취향 분석 시작
+2025-07-25 07:30:14,164 - tools - INFO - 📋 [PREFERENCE ANALYSIS] 분석 대상 곡 수: 4개
+2025-07-25 07:30:14,165 - tools - INFO - 🎼 [PREFERENCE ANALYSIS] 분석 곡 목록:
+2025-07-25 07:30:14,165 - tools - INFO -    1. 활과 화살 - 요네즈 켄시 (J-pop 댄스팝)
+2025-07-25 07:30:14,165 - tools - INFO -    2. 불가사의의 카르테 - 코다마 아메코 (J-pop  서정 팝)
+2025-07-25 07:30:14,166 - tools - INFO -    3. 용사 - 요아소비 (팝)
+2025-07-25 07:30:14,166 - tools - INFO -    4. 말린 꽃 - 이마세 (팝)
+2025-07-25 07:30:14,166 - tools - INFO - 🤖 [PREFERENCE AI] AI 취향 분석 요청 시작
+2025-07-25 07:30:15,743 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:15,746 - tools - INFO - ✅ [PREFERENCE AI] AI 응답 완료 - 소요시간: 1.580초
+2025-07-25 07:30:15,747 - tools - INFO - ✅ [PREFERENCE ANALYSIS] 취향 분석 성공 완료 - 총 소요시간: 1.583초
+2025-07-25 07:30:15,747 - tools - INFO - 🎯 [PREFERENCE RESULT] 선호 장르: ['J-pop 댄스팝', 'J-pop 서정 팝', '팝']
+2025-07-25 07:30:15,747 - tools - INFO - 🎭 [PREFERENCE RESULT] 선호 분위기: ['에너지', '감성적']
+2025-07-25 07:30:15,748 - tools - INFO - 📝 [PREFERENCE RESULT] 전체 취향: 에너지 넘치면서도 감성적인 곡을 선호하는 취향
+2025-07-25 07:30:15,748 - tools - INFO - 🗄️  [DB QUERY] 후보곡 조회 시작 - 목표: 100곡
+2025-07-25 07:30:15,754 - tools - INFO - 🔗 [DB QUERY] DB 연결 완료 - 소요시간: 0.005초
+2025-07-25 07:30:15,754 - tools - INFO - 🎵 [DB QUERY] 즐겨찾기 기반 후보곡 조회 - 즐겨찾기: 4곡
+2025-07-25 07:30:15,757 - tools - INFO - 📋 [DB QUERY] 즐겨찾기 정보 조회 완료 - 4곡, 소요시간: 0.002초
+2025-07-25 07:30:15,758 - tools - INFO - 🎭 [DB QUERY] 추출된 장르: ['J-pop 댄스팝', '팝', 'J-pop  서정 팝']
+2025-07-25 07:30:15,759 - tools - INFO - 🎤 [DB QUERY] 추출된 아티스트: ['이마세', '요아소비', '코다마 아메코', '요네즈 켄시']
+2025-07-25 07:30:15,771 - tools - INFO - �� [DB QUERY] 유사곡 조회 완료 - 13곡, 소요시간: 0.012초
+2025-07-25 07:30:15,778 - tools - INFO - 🎲 [DB QUERY] 랜덤곡 조회 완료 - 87곡, 소요시간: 0.005초
+2025-07-25 07:30:15,778 - tools - INFO - ✅ [DB QUERY] 후보곡 조회 완료 - 총 100곡, 총 소요시간: 0.030초
+2025-07-25 07:30:15,779 - tools - INFO - 🎯 [AI RECOMMEND] AI 곡 추천 시작
+2025-07-25 07:30:15,779 - tools - INFO - 📊 [AI RECOMMEND] 후보곡 수: 100개, 목표 추천곡 수: 20개
+2025-07-25 07:30:15,780 - tools - INFO - 📝 [AI RECOMMEND] 후보곡 포맷팅 완료 - 소요시간: 0.000초
+2025-07-25 07:30:15,780 - tools - INFO - 🎭 [AI RECOMMEND] 사용자 취향 정보 활용
+2025-07-25 07:30:15,781 - tools - INFO - 🤖 [AI RECOMMEND] AI 추천 요청 시작 (GPT-4o-mini)
+2025-07-25 07:30:38,129 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:38,132 - tools - INFO - ✅ [AI RECOMMEND] AI 추천 응답 완료 - 소요시간: 22.352초
+2025-07-25 07:30:38,133 - tools - INFO - ✅ [AI RECOMMEND] JSON 파싱 성공 - 파싱 소요시간: 0.000초
+2025-07-25 07:30:38,133 - tools - INFO - 🎵 [AI RECOMMEND] 추천곡 수: 20개
+2025-07-25 07:30:38,134 - tools - INFO - ✅ [AI RECOMMEND] AI 곡 추천 완료 - 총 소요시간: 22.354초
+2025-07-25 07:30:38,134 - tools - INFO -    1. 아이돌 - 요아소비 (일렉트로 팝)
+2025-07-25 07:30:38,135 - tools - INFO -    2. 난난w/뭐야ㅋ - 후지이 카제 (팝)
+2025-07-25 07:30:38,135 - tools - INFO -    3. 반짝 - 후지이 카제 (팝)
+2025-07-25 07:30:38,135 - tools - INFO -    4. 드리멀 - 이쿠타 리라 (J-pop)
+2025-07-25 07:30:38,136 - tools - INFO -    5. 타임 패러독스 - 바운디 (팝 록)
+2025-07-25 07:30:38,136 - tools - INFO - 🔗 [MATCHING] AI 추천곡과 DB 매칭 시작
+2025-07-25 07:30:38,136 - tools - INFO - 📊 [MATCHING] AI 추천곡: 20개, DB 후보곡: 100개
+2025-07-25 07:30:38,137 - tools - INFO - ⚠️  [MATCHING] 매칭 실패: 고백 - 이마세
+2025-07-25 07:30:38,137 - tools - INFO - ✅ [MATCHING] 매칭 완료 - 소요시간: 0.001초
+2025-07-25 07:30:38,137 - tools - INFO - 📈 [MATCHING] 매칭 결과: 20개 중 19개 매칭 (95.0%)
+2025-07-25 07:30:38,138 - tools - INFO - 🔄 [MATCHING] 부족분 1곡을 랜덤 선택으로 보충
+2025-07-25 07:30:38,138 - tools - INFO - 🔨 [BUILD PAYLOAD] 최종 응답 페이로드 생성 시작
+2025-07-25 07:30:38,138 - tools - INFO - 📂 [GROUPING] 곡 그룹화 시작 - 대상곡: 20개
+2025-07-25 07:30:38,139 - tools - INFO - ✅ [GROUPING] 그룹화 완료 - 소요시간: 0.000초
+2025-07-25 07:30:38,139 - tools - INFO - 📊 [GROUPING] 생성된 그룹 수: 3개
+2025-07-25 07:30:38,139 - tools - INFO -    📁 에너지: 8곡
+2025-07-25 07:30:38,140 - tools - INFO -    📁 감성적: 11곡
+2025-07-25 07:30:38,140 - tools - INFO -    📁 강렬: 1곡
+2025-07-25 07:30:38,140 - tools - INFO - �� [BUILD PAYLOAD] 제외할 즐겨찾기 곡 수: 4개
+2025-07-25 07:30:38,141 - tools - INFO - 🏷️  [TAGLINE] '감성적' 그룹 태그라인 생성 시작
+2025-07-25 07:30:38,141 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 유알엘 - 사카구치 아미 / 축복 - 요아소비 / 행복 주문? - 이마세
+2025-07-25 07:30:38,141 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 0.87, Max Tokens: 50
+2025-07-25 07:30:38,999 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:39,004 - tools - INFO -    시도 1: 감성을 노래해! 🎶✨
+2025-07-25 07:30:39,720 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:39,727 - tools - INFO -    시도 2: 감성을 노래하다! 🎶
+2025-07-25 07:30:39,728 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.585초, 총 소요시간: 1.587초
+2025-07-25 07:30:39,729 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 감성을 노래해! 🎶✨
+2025-07-25 07:30:39,729 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '감성적' 추가: 10곡
+2025-07-25 07:30:39,730 - tools - INFO - 🏷️  [TAGLINE] '에너지' 그룹 태그라인 생성 시작
+2025-07-25 07:30:39,731 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 반짝 - 후지이 카제 / 드리멀 - 이쿠타 리라 / 타임 패러독스 - 바운디
+2025-07-25 07:30:39,732 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 1.07, Max Tokens: 30
+2025-07-25 07:30:40,392 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:40,396 - tools - INFO -    시도 1: 에너지 넘치는 순간! 🎶
+2025-07-25 07:30:41,073 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:41,076 - tools - INFO -    시도 2: 에너지, 당신의 순간을 반짝이게! ✨
+2025-07-25 07:30:41,077 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.344초, 총 소요시간: 1.347초
+2025-07-25 07:30:41,077 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 에너지 넘치는 순간! 🎶
+2025-07-25 07:30:41,078 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '에너지' 추가: 8곡
+2025-07-25 07:30:41,078 - tools - INFO - 🏷️  [TAGLINE] '강렬' 그룹 태그라인 생성 시작
+2025-07-25 07:30:41,078 - tools - INFO - 🎵 [TAGLINE] 샘플 곡: 뭐가 나빠 - 결속밴드
+2025-07-25 07:30:41,079 - tools - INFO - 🤖 [TAGLINE] AI 설정 - Temperature: 0.86, Max Tokens: 40
+2025-07-25 07:30:41,879 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:41,883 - tools - INFO -    시도 1: 강렬한 열정, 뭐가 나빠? 🔥🎶
+2025-07-25 07:30:42,744 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-07-25 07:30:42,747 - tools - INFO -    시도 2: 강렬한 열정, 뭐가 나빠? 🔥🎶
+2025-07-25 07:30:42,748 - tools - INFO - ✅ [TAGLINE] 태그라인 생성 완료 - AI 소요시간: 1.668초, 총 소요시간: 1.670초
+2025-07-25 07:30:42,748 - tools - INFO - 🏷️  [TAGLINE] 최종 선택: 강렬한 열정, 뭐가 나빠? 🔥🎶
+2025-07-25 07:30:42,749 - tools - INFO - 📦 [BUILD PAYLOAD] 그룹 '강렬' 추가: 1곡
+2025-07-25 07:30:42,749 - tools - INFO - ✅ [BUILD PAYLOAD] 페이로드 생성 완료 - 소요시간: 4.611초
+2025-07-25 07:30:42,749 - tools - INFO - 📊 [BUILD PAYLOAD] 최종 그룹 수: 3개, 총 곡 수: 19개
+2025-07-25 07:30:42,750 - tools - INFO - 🏆 [RECOMMEND ENGINE] 추천 엔진 완료 - 총 소요시간: 28.596초
+2025-07-25 07:30:42,750 - tools - INFO - 📊 [RECOMMEND ENGINE] 최종 결과: 3개 그룹, 19곡 추천
+2025-07-25 07:30:42,751 - main - INFO - 🎯 [AI ENGINE] AI 추천 완료 - 소요시간: 28.597초
+2025-07-25 07:30:42,751 - main - INFO - 📈 [RESULT] 추천 결과 통계:
+2025-07-25 07:30:42,751 - main - INFO -    - 그룹 수: 3개
+2025-07-25 07:30:42,752 - main - INFO -    - 총 추천곡 수: 19개
+2025-07-25 07:30:42,752 - main - INFO -    - AI 취향 분석 성공: True
+2025-07-25 07:30:42,752 - main - INFO -    - AI 추천곡 수: 20개
+2025-07-25 07:30:42,753 - main - INFO -    - 취향 요약: 에너지 넘치면서도 감성적인 곡을 선호하는 취향
+2025-07-25 07:30:42,753 - main - INFO - 🎼 [GROUP 1] 감성적 - 10곡 | 감성을 노래해! 🎶✨
+2025-07-25 07:30:42,753 - main - INFO - 🎼 [GROUP 2] 에너지 - 8곡 | 에너지 넘치는 순간! 🎶
+2025-07-25 07:30:42,754 - main - INFO - 🎼 [GROUP 3] 강렬 - 1곡 | 강렬한 열정, 뭐가 나빠? 🔥🎶
+2025-07-25 07:30:42,754 - main - INFO - 💾 [CACHE SAVE] 결과 캐시 저장 시작
+2025-07-25 07:30:42,755 - main - INFO - ✅ [CACHE SAVE] 캐시 저장 완료 - 소요시간: 0.001초
+2025-07-25 07:30:42,755 - main - INFO - 🏁 [SUCCESS] 추천 API 성공 완료!
+2025-07-25 07:30:42,756 - main - INFO - ⏱️  [TIMING] 총 소요시간: 28.605초
+2025-07-25 07:30:42,756 - main - INFO - ⏱️  [TIMING] - 캐시 확인: 0.001초
+2025-07-25 07:30:42,756 - main - INFO - ⏱️  [TIMING] - AI 추천: 28.597초
+2025-07-25 07:30:42,756 - main - INFO - ⏱️  [TIMING] - 캐시 저장: 0.001초
+2025-07-25 07:30:42,757 - main - INFO - 🔚 [END] RequestID: 2_1753428614 완료

@@ -1,32 +1,28 @@
 from langchain_core.prompts import PromptTemplate
 
-RECOMMEND_PROMPT = PromptTemplate.from_template(
+# 사용자 취향 분석을 위한 프롬프트
+ANALYZE_PREFERENCE_PROMPT = PromptTemplate.from_template(
     """
-아래는 사용자의 즐겨찾기 곡 목록입니다:
+즐겨찾기 곡을 분석해서 취향을 파악하고 JSON으로 답변:
+
 {favorites}
 
-아래는 추천 후보 곡 목록입니다:
+답변 형식:
+{{"preferred_genres":["장르1","장르2"],"preferred_moods":["분위기1","분위기2"],"overall_taste":"한줄요약"}}
+"""
+)
+
+# 추천 프롬프트
+RECOMMEND_PROMPT = PromptTemplate.from_template(
+    """
+사용자 취향: {user_preference}
+
+후보곡 목록:
 {song_list}
 
-위 후보 목록에서 사용자의 취향에 가장 적합한 5곡을 골라 JSON 형식으로
-반환하세요.
+위 목록에서 {target_count}곡을 선별해서 JSON으로 답변:
 
-**반드시 위 후보 목록(데이터베이스) 안에 있는 곡만 추천하세요.**
-
-JSON 형식(불필요한 텍스트 금지):
-
-{{
-  "recommended_songs": [
-    {{
-      "title": "...",
-      "artist": "...",
-      "tj_number": "...",
-      "ky_number": "..."
-    }}
-  ]
-}}
-
-배열에는 정확히 5곡만 포함해야 합니다.
+{{"recommended_songs":[{{"title":"곡제목","artist_kr":"아티스트","tj_number":123,"ky_number":456,"mood":"분위기","genre":"장르"}}]}}
 """
 )
 
@@ -40,10 +36,7 @@ GROUP_TAGLINE_PROMPT = PromptTemplate.from_template(
 - 톤: 간결하고 임팩트 있게
 - 이모지: 🎵🎶✨🔥💥 중에서 1-2개만 사용
 
-**그룹별 스타일 예시:**
-- 감성적: "감성 한 스푼, 마음 한 스푼 🎶✨"
-- 에너지: "에너지 폭발! 💥 치유의 노래"
-- 강렬: "심장을 두드리는 강렬함! 🔥"
+
 
 [그룹]
 {label}
