@@ -193,25 +193,16 @@ def _make_tagline(label: str, songs: list[dict]) -> str:
         openai_api_key=OPENAI_API_KEY
     )
     
-    responses = []
-    
-    for attempt in range(2):
-        try:
-            response = llm.invoke(
-                GROUP_TAGLINE_PROMPT.format(label=label, sample_songs=sample_txt)
-            ).content.strip()
-            
-            response = response.strip('"').strip("'").strip()
-            responses.append(response)
-        except Exception as e:
-            continue
-    
-    if not responses:
+    try:
+        response = llm.invoke(
+            GROUP_TAGLINE_PROMPT.format(label=label, sample_songs=sample_txt)
+        ).content.strip()
+        
+        response = response.strip('"').strip("'").strip()
+        return response
+    except Exception as e:
         fallback_tagline = f"{label}의 매력적인 선곡 🎵"
         return fallback_tagline
-    
-    final_tagline = min(responses, key=len) if len(responses) > 1 else responses[0]
-    return final_tagline
 
 def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None) -> list[dict]:
     grouped = _group_songs(recs)
@@ -286,6 +277,16 @@ def get_candidate_songs(favorite_song_ids: list[int], limit: int = 100) -> list[
                    f"AND song_id NOT IN ({fav_ids_str}) ORDER BY RAND() LIMIT {limit//2}")
             cur.execute(sql)
             similar_songs = cur.fetchall()
+            
+            # 취향 기반 노래에 표시 추가
+            for song in similar_songs:
+                song['recommendation_type'] = 'preference'
+                # 추가로 매칭된 기준도 표시
+                song['matched_criteria'] = []
+                if song.get('genre') and song['genre'] in genres:
+                    song['matched_criteria'].append('genre')
+                if song.get('artist_kr') and song['artist_kr'] in artists:
+                    song['matched_criteria'].append('artist')
         
         remaining_limit = limit - len(similar_songs)
         if remaining_limit > 0:
@@ -293,12 +294,22 @@ def get_candidate_songs(favorite_song_ids: list[int], limit: int = 100) -> list[
                    f"ORDER BY RAND() LIMIT {remaining_limit}")
             cur.execute(sql)
             random_songs = cur.fetchall()
+            
+            # 랜덤 노래에 표시 추가
+            for song in random_songs:
+                song['recommendation_type'] = 'random'
+                song['matched_criteria'] = []
+                
             similar_songs.extend(random_songs)
         
         candidates = similar_songs
     else:
         cur.execute(f"SELECT * FROM song ORDER BY RAND() LIMIT {limit}")
         candidates = cur.fetchall()
+        # 선호도가 없는 경우 모두 랜덤으로 표시
+        for song in candidates:
+            song['recommendation_type'] = 'random'
+            song['matched_criteria'] = []
 
     cur.close()
     conn.close()

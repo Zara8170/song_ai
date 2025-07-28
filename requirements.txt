@@ -10,3 +10,4 @@ elasticsearch
 redis
 APScheduler
 pytz
+cryptography
