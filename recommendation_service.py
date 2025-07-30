@@ -145,11 +145,12 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
             if song_id and song_id in favorite_song_ids:
                 continue
                 
-            title_jp, title_kr, artist, artist_kr = _get_title_artist(s)
+            title_jp, title_kr, title_en, artist, artist_kr = _get_title_artist(s)
             
             norm_songs.append({
                 "title_jp": title_jp,
                 "title_kr": title_kr,
+                "title_en": title_en,
                 "artist": artist,
                 "artist_kr": artist_kr,
                 "tj_number": s.get("tj_number"),
@@ -170,11 +171,12 @@ def _normalize_candidates_for_cache(candidates: list[dict]) -> list[dict]:
     """후보곡을 캐시용으로 정규화합니다."""
     normalized = []
     for song in candidates:
-        title_jp, title_kr, artist, artist_kr = _get_title_artist(song)
+        title_jp, title_kr, title_en, artist, artist_kr = _get_title_artist(song)
         normalized.append({
             "song_id": song.get("song_id"),
             "title_jp": title_jp,
             "title_kr": title_kr,
+            "title_en": title_en,
             "artist": artist,
             "artist_kr": artist_kr,
             "genre": song.get("genre"),

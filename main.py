@@ -59,8 +59,8 @@ async def recommend(request: RecommendationRequest):
             data = json.loads(cached)
             candidates = data.get("candidates", [])
             
-            # 후보곡 중 9개 랜덤 선택 (후보곡이 9개 미만이면 전체 반환)
-            random_candidates = sample(candidates, min(9, len(candidates))) if len(candidates) > 0 else []
+            # 후보곡 중 12개 랜덤 선택 (후보곡이 12개 미만이면 전체 반환)
+            random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
             
             return {
                 "groups": data["recommendations"]["groups"],
@@ -79,9 +79,9 @@ async def recommend(request: RecommendationRequest):
         }
         redis_client.setex(cache_key, REDIS_TTL, json.dumps(payload, ensure_ascii=False))
         
-        # 응답에 후보곡 9개 랜덤 선택해서 포함
+        # 응답에 후보곡 12개 랜덤 선택해서 포함
         candidates = result["candidates"]
-        random_candidates = sample(candidates, min(9, len(candidates))) if len(candidates) > 0 else []
+        random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
         
         return {
             "groups": result["groups"],

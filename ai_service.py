@@ -7,8 +7,19 @@ from random import sample, uniform, choice
 def _get_title_artist_for_tagline(song: dict) -> tuple[str, str]:
     """태그라인 생성용으로 제목과 아티스트를 추출합니다."""
     title_kr = song.get("title_kr", "")
+    title_en = song.get("title_en", "")
+    title_jp = song.get("title_jp", "")
+    
+    # 순서대로 한국어 제목 > 영어 제목 > 일본어 제목 사용
+    title = title_kr.strip() or title_en.strip() or title_jp.strip() or "Unknown Title"
+    
     artist_kr = song.get("artist_kr", "")
-    return title_kr.strip(), artist_kr.strip()
+    artist = song.get("artist", "")
+    
+    # 순서대로 한국어 아티스트 > 원어 아티스트 사용
+    artist_name = artist_kr.strip() or artist.strip() or "Unknown Artist"
+    
+    return title, artist_name
 
 def _analyze_user_preference(favorite_songs: list[dict]) -> dict:
     """사용자의 선호도를 AI로 분석합니다."""
