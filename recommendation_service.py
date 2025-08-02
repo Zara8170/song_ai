@@ -174,7 +174,7 @@ def _normalize_candidates_for_cache(candidates: list[dict]) -> list[dict]:
         })
     return normalized
 
-def recommend_songs(favorite_song_ids: list[int]) -> dict:
+def recommend_songs(favorite_song_ids: list[int], cached_preference: dict = None) -> dict:
     """메인 추천 함수 - 사용자의 선호 노래를 기반으로 추천 결과와 후보곡을 생성합니다."""
     if not favorite_song_ids:
         candidate_songs = get_candidate_songs([], limit=100)
@@ -191,7 +191,11 @@ def recommend_songs(favorite_song_ids: list[int]) -> dict:
         }
     
     favorite_songs = get_favorite_songs_info(favorite_song_ids)
-    user_preference = _analyze_user_preference(favorite_songs)
+    
+    if cached_preference:
+        user_preference = cached_preference
+    else:
+        user_preference = _analyze_user_preference(favorite_songs)
     
     candidate_songs = get_candidate_songs(favorite_song_ids, limit=100)
     if not candidate_songs:
@@ -208,7 +212,12 @@ def recommend_songs(favorite_song_ids: list[int]) -> dict:
     
     normalized_candidates = _normalize_candidates_for_cache(candidate_songs)
 
-    return {
+    result = {
         "groups": groups_payload,
         "candidates": normalized_candidates
-    } 
+    }
+    
+    if not cached_preference and user_preference:
+        result["preference"] = user_preference
+    
+    return result 

@@ -11,7 +11,7 @@ from redis_scheduler import start_scheduler, stop_scheduler
 
 load_dotenv()
 
-REDIS_TTL = 60 * 60 * 24  # 1일 (24시간)
+REDIS_TTL = 60 * 60 * 24 * 7  # 7일
 
 redis_client = redis.Redis(
     host=os.getenv("REDIS_HOST"),
@@ -42,6 +42,38 @@ class RecommendationRequest(BaseModel):
         return v
 
 
+def check_preference_cache(member_id: str, favorite_song_ids: list[int]) -> tuple[dict, bool]:
+    """preference 캐시 확인 및 즐겨찾기 목록 비교"""
+    pref_key = f"preference:{member_id}"
+    cached = redis_client.get(pref_key)
+    
+    if not cached:
+        return None, False
+    
+    try:
+        pref_data = json.loads(cached)
+        cached_favorites = pref_data.get("favorite_song_ids", [])
+        
+        # 즐겨찾기 목록 비교 (순서 무관)
+        if set(cached_favorites) == set(favorite_song_ids):
+            return pref_data.get("preference"), True
+        else:
+            # 즐겨찾기가 바뀌면 기존 캐시 삭제
+            redis_client.delete(pref_key)
+            redis_client.delete(f"recommend:{member_id}")
+            return None, False
+    except:
+        return None, False
+
+def save_preference_cache(member_id: str, favorite_song_ids: list[int], preference: dict):
+    """preference 캐시 저장"""
+    pref_key = f"preference:{member_id}"
+    pref_data = {
+        "favorite_song_ids": favorite_song_ids,
+        "preference": preference
+    }
+    redis_client.setex(pref_key, REDIS_TTL, json.dumps(pref_data, ensure_ascii=False))
+
 @app.get("/")
 def read_root():
     return {"message": "AI Song Recommender is running!"}
@@ -52,26 +84,40 @@ async def recommend(request: RecommendationRequest):
     try:
         memberId = request.memberId
         favorite_song_ids = request.favorite_song_ids
-        cache_key = f"recommend:{memberId}"
-
-        cached = redis_client.get(cache_key)
-        if cached:
-            data = json.loads(cached)
-            candidates = data.get("candidates", [])
-            
-            # 후보곡 중 12개 랜덤 선택 (후보곡이 12개 미만이면 전체 반환)
-            random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
-            
-            return {
-                "groups": data["recommendations"]["groups"],
-                "candidates": random_candidates
-            }
         
-        result = recommend_songs(favorite_song_ids)
+        # 1. preference 캐시 확인
+        cached_preference, is_cache_valid = check_preference_cache(memberId, favorite_song_ids)
+        
+        # 2. recommend 캐시 확인 (preference가 유효한 경우에만)
+        cache_key = f"recommend:{memberId}"
+        if is_cache_valid:
+            cached = redis_client.get(cache_key)
+            if cached:
+                data = json.loads(cached)
+                candidates = data.get("candidates", [])
+                random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
+                
+                return {
+                    "groups": data["recommendations"]["groups"],
+                    "candidates": random_candidates
+                }
+        
+        # 3. 새로운 추천 생성
+        if cached_preference:
+            # preference 재사용해서 추천만 새로 생성
+            result = recommend_songs(favorite_song_ids, cached_preference)
+        else:
+            # preference부터 새로 분석
+            result = recommend_songs(favorite_song_ids)
+            
+            # 새로운 preference가 생성되었으면 캐시 저장
+            if "preference" in result:
+                save_preference_cache(memberId, favorite_song_ids, result["preference"])
+        
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
 
-        # 후보곡을 포함한 payload로 캐시 저장
+        # 4. recommend 캐시 저장
         payload = {
             "favorites": favorite_song_ids, 
             "recommendations": {"groups": result["groups"]},
@@ -79,7 +125,7 @@ async def recommend(request: RecommendationRequest):
         }
         redis_client.setex(cache_key, REDIS_TTL, json.dumps(payload, ensure_ascii=False))
         
-        # 응답에 후보곡 12개 랜덤 선택해서 포함
+        # 5. 응답 반환
         candidates = result["candidates"]
         random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
         

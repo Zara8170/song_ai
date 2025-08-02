@@ -83,9 +83,7 @@ def _ai_recommend_songs(candidate_songs: list[dict], user_preference: dict, targ
         return []
     
     song_list_text = "\n".join([
-        f"{i+1}. {song.get('title_kr', 'Unknown')} - {song.get('artist_kr', 'Unknown')} "
-        f"(장르: {song.get('genre', 'Unknown')}, 분위기: {song.get('mood', 'Unknown')}, "
-        f"TJ: {song.get('tj_number', 'N/A')}, KY: {song.get('ky_number', 'N/A')})"
+        f"{i+1}.{song.get('title_kr', 'Unknown')}-{song.get('artist_kr', 'Unknown')}({song.get('genre', 'Unknown')},{song.get('mood', 'Unknown')})"
         for i, song in enumerate(candidate_songs)
     ])
     
