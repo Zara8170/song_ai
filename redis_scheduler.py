@@ -2,6 +2,7 @@ import os
 import redis
 import logging
 import json
+from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
@@ -28,7 +29,6 @@ def regenerate_all_recommendations():
     매일 새벽 3시에 실행되는 추천 캐시 삭제 및 재생성 함수
     """
     try:
-        # 1. recommend 캐시만 삭제 (preference는 7일 TTL로 유지)
         recommend_keys = redis_client.keys("recommend:*")
         
         if recommend_keys:
@@ -37,11 +37,9 @@ def regenerate_all_recommendations():
         else:
             logger.info("📝 삭제할 추천 캐시가 없습니다")
         
-        # preference 캐시는 유지 (7일 TTL)
         preference_keys = redis_client.keys("preference:*")
         logger.info(f"💾 취향 캐시 유지: {len(preference_keys)}개 (최대 7일간 재사용)")
         
-        # 2. DB에서 USER 역할의 활성 사용자 정보 가져오기
         logger.info("🔍 DB에서 활성 사용자 정보 수집 중...")
         user_favorites = get_all_active_users_with_favorites()
         
@@ -51,7 +49,6 @@ def regenerate_all_recommendations():
         
         logger.info(f"👥 {len(user_favorites)}명의 활성 사용자 발견")
         
-        # 3. 새로운 추천 생성 및 저장
         logger.info(f"🎵 {len(user_favorites)}명의 사용자를 위한 새로운 추천 생성 중...")
         
         success_count = 0
@@ -59,7 +56,6 @@ def regenerate_all_recommendations():
         
         for member_id, favorite_song_ids in user_favorites.items():
             try:
-                # preference 캐시 확인
                 cached_preference = None
                 pref_key = f"preference:{member_id}"
                 cached_pref_data = redis_client.get(pref_key)
@@ -68,39 +64,37 @@ def regenerate_all_recommendations():
                     try:
                         pref_data = json.loads(cached_pref_data)
                         cached_favorites = pref_data.get("favorite_song_ids", [])
-                        # 즐겨찾기 목록이 같으면 preference 재사용
                         if set(cached_favorites) == set(favorite_song_ids):
                             cached_preference = pref_data.get("preference")
                             logger.debug(f"👤 사용자 {member_id}: preference 캐시 재사용")
                         else:
-                            # 즐겨찾기가 바뀌면 캐시 삭제
                             redis_client.delete(pref_key)
                             logger.debug(f"👤 사용자 {member_id}: 즐겨찾기 변경으로 preference 캐시 삭제")
                     except:
                         pass
                 
-                # 추천 생성 (preference 캐시 활용)
                 result = recommend_songs(favorite_song_ids, cached_preference)
                 
                 if "error" not in result:
-                    # TTL 7일로 설정
                     CACHE_TTL = 60 * 60 * 24 * 7
                     
-                    # preference 캐시 저장
                     if "preference" in result:
                         pref_key = f"preference:{member_id}"
+                        today = datetime.now().strftime("%Y-%m-%d")
                         pref_data = {
                             "favorite_song_ids": favorite_song_ids,
-                            "preference": result["preference"]
+                            "preference": result["preference"],
+                            "generated_date": today
                         }
                         redis_client.setex(pref_key, CACHE_TTL, json.dumps(pref_data, ensure_ascii=False))
                     
-                    # recommend 캐시 저장 - 후보곡 포함
                     cache_key = f"recommend:{member_id}"
+                    today = datetime.now().strftime("%Y-%m-%d")
                     payload = {
                         "favorites": favorite_song_ids, 
                         "recommendations": {"groups": result["groups"]},
-                        "candidates": result["candidates"]
+                        "candidates": result["candidates"],
+                        "generated_date": today
                     }
                     redis_client.setex(cache_key, CACHE_TTL, json.dumps(payload, ensure_ascii=False))
                     success_count += 1
@@ -121,7 +115,7 @@ def regenerate_all_recommendations():
 
 def clear_recommendation_cache():
     """
-    추천 캐시만 삭제하는 함수 (백업용)
+    추천 캐시만 삭제하는 함수
     """
     try:
         recommend_keys = redis_client.keys("recommend:*")
@@ -137,7 +131,7 @@ def clear_recommendation_cache():
 
 def clear_all_cache():
     """
-    모든 캐시 삭제하는 함수 (preference 포함)
+    모든 캐시 삭제하는 함수
     """
     try:
         recommend_keys = redis_client.keys("recommend:*")

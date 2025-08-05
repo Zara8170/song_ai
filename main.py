@@ -4,6 +4,7 @@ import uvicorn
 from typing import List
 from dotenv import load_dotenv
 import os, json, redis, atexit, time
+from datetime import datetime
 from random import sample
 
 from tools import recommend_songs
@@ -43,7 +44,7 @@ class RecommendationRequest(BaseModel):
 
 
 def check_preference_cache(member_id: str, favorite_song_ids: list[int]) -> tuple[dict, bool]:
-    """preference 캐시 확인 및 즐겨찾기 목록 비교"""
+    """preference 캐시 확인 및 즐겨찾기 목록 비교 (하루에 한번만 새로 생성)"""
     pref_key = f"preference:{member_id}"
     cached = redis_client.get(pref_key)
     
@@ -53,12 +54,18 @@ def check_preference_cache(member_id: str, favorite_song_ids: list[int]) -> tupl
     try:
         pref_data = json.loads(cached)
         cached_favorites = pref_data.get("favorite_song_ids", [])
+        generated_date = pref_data.get("generated_date")
+        today = datetime.now().strftime("%Y-%m-%d")
         
-        # 즐겨찾기 목록 비교 (순서 무관)
+        # 같은 날짜에 생성된 캐시면 즐겨찾기가 바뀌어도 재사용
+        if generated_date == today:
+            return pref_data.get("preference"), True
+        
+        # 날짜가 다르면 즐겨찾기 목록 비교
         if set(cached_favorites) == set(favorite_song_ids):
             return pref_data.get("preference"), True
         else:
-            # 즐겨찾기가 바뀌면 기존 캐시 삭제
+            # 즐겨찾기가 바뀌고 날짜도 다르면 기존 캐시 삭제
             redis_client.delete(pref_key)
             redis_client.delete(f"recommend:{member_id}")
             return None, False
@@ -68,9 +75,11 @@ def check_preference_cache(member_id: str, favorite_song_ids: list[int]) -> tupl
 def save_preference_cache(member_id: str, favorite_song_ids: list[int], preference: dict):
     """preference 캐시 저장"""
     pref_key = f"preference:{member_id}"
+    today = datetime.now().strftime("%Y-%m-%d")
     pref_data = {
         "favorite_song_ids": favorite_song_ids,
-        "preference": preference
+        "preference": preference,
+        "generated_date": today
     }
     redis_client.setex(pref_key, REDIS_TTL, json.dumps(pref_data, ensure_ascii=False))
 
@@ -93,14 +102,26 @@ async def recommend(request: RecommendationRequest):
         if is_cache_valid:
             cached = redis_client.get(cache_key)
             if cached:
-                data = json.loads(cached)
-                candidates = data.get("candidates", [])
-                random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
-                
-                return {
-                    "groups": data["recommendations"]["groups"],
-                    "candidates": random_candidates
-                }
+                try:
+                    data = json.loads(cached)
+                    recommend_date = data.get("generated_date")
+                    today = datetime.now().strftime("%Y-%m-%d")
+                    
+                    # 같은 날짜에 생성된 추천이면 재사용
+                    if recommend_date == today:
+                        candidates = data.get("candidates", [])
+                        random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
+                        
+                        return {
+                            "groups": data["recommendations"]["groups"],
+                            "candidates": random_candidates
+                        }
+                    else:
+                        # 날짜가 다르면 캐시 삭제하고 새로 생성
+                        redis_client.delete(cache_key)
+                except:
+                    # 캐시 파싱 오류시 삭제
+                    redis_client.delete(cache_key)
         
         # 3. 새로운 추천 생성
         if cached_preference:
@@ -118,10 +139,12 @@ async def recommend(request: RecommendationRequest):
             raise HTTPException(status_code=500, detail=result["error"])
 
         # 4. recommend 캐시 저장
+        today = datetime.now().strftime("%Y-%m-%d")
         payload = {
             "favorites": favorite_song_ids, 
             "recommendations": {"groups": result["groups"]},
-            "candidates": result["candidates"]
+            "candidates": result["candidates"],
+            "generated_date": today
         }
         redis_client.setex(cache_key, REDIS_TTL, json.dumps(payload, ensure_ascii=False))
         
