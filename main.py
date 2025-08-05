@@ -25,10 +25,8 @@ print(redis_client.ping())
 
 app = FastAPI()
 
-# Redis 스케줄러 시작
 scheduler = start_scheduler()
-
-# 애플리케이션 종료 시 스케줄러도 중지
+    
 atexit.register(lambda: stop_scheduler(scheduler))
 
 class RecommendationRequest(BaseModel):
@@ -57,15 +55,12 @@ def check_preference_cache(member_id: str, favorite_song_ids: list[int]) -> tupl
         generated_date = pref_data.get("generated_date")
         today = datetime.now().strftime("%Y-%m-%d")
         
-        # 같은 날짜에 생성된 캐시면 즐겨찾기가 바뀌어도 재사용
         if generated_date == today:
             return pref_data.get("preference"), True
         
-        # 날짜가 다르면 즐겨찾기 목록 비교
         if set(cached_favorites) == set(favorite_song_ids):
             return pref_data.get("preference"), True
         else:
-            # 즐겨찾기가 바뀌고 날짜도 다르면 기존 캐시 삭제
             redis_client.delete(pref_key)
             redis_client.delete(f"recommend:{member_id}")
             return None, False
@@ -94,45 +89,46 @@ async def recommend(request: RecommendationRequest):
         memberId = request.memberId
         favorite_song_ids = request.favorite_song_ids
         
-        # 1. preference 캐시 확인
-        cached_preference, is_cache_valid = check_preference_cache(memberId, favorite_song_ids)
-        
-        # 2. recommend 캐시 확인 (preference가 유효한 경우에만)
+        # 1. recommend 캐시 먼저 확인 (모든 사용자에 대해)
         cache_key = f"recommend:{memberId}"
-        if is_cache_valid:
-            cached = redis_client.get(cache_key)
-            if cached:
-                try:
-                    data = json.loads(cached)
-                    recommend_date = data.get("generated_date")
-                    today = datetime.now().strftime("%Y-%m-%d")
+        cached = redis_client.get(cache_key)
+        if cached:
+            try:
+                data = json.loads(cached)
+                recommend_date = data.get("generated_date")
+                today = datetime.now().strftime("%Y-%m-%d")
+                
+                # 같은 날짜에 생성된 추천이면 재사용
+                if recommend_date == today:
+                    candidates = data.get("candidates", [])
+                    random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
                     
-                    # 같은 날짜에 생성된 추천이면 재사용
-                    if recommend_date == today:
-                        candidates = data.get("candidates", [])
-                        random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
-                        
-                        return {
-                            "groups": data["recommendations"]["groups"],
-                            "candidates": random_candidates
-                        }
-                    else:
-                        # 날짜가 다르면 캐시 삭제하고 새로 생성
-                        redis_client.delete(cache_key)
-                except:
-                    # 캐시 파싱 오류시 삭제
+                    return {
+                        "groups": data["recommendations"]["groups"],
+                        "candidates": random_candidates
+                    }
+                else:
+                    # 날짜가 다르면 캐시 삭제
                     redis_client.delete(cache_key)
+            except:
+                # 캐시 파싱 오류시 삭제
+                redis_client.delete(cache_key)
+        
+        # 2. preference 캐시 확인 (좋아요가 있는 사용자만)
+        cached_preference = None
+        if favorite_song_ids:  # 좋아요가 있는 경우에만
+            cached_preference, is_cache_valid = check_preference_cache(memberId, favorite_song_ids)
         
         # 3. 새로운 추천 생성
         if cached_preference:
             # preference 재사용해서 추천만 새로 생성
             result = recommend_songs(favorite_song_ids, cached_preference)
         else:
-            # preference부터 새로 분석
+            # preference부터 새로 분석 (또는 좋아요가 없는 경우)
             result = recommend_songs(favorite_song_ids)
             
             # 새로운 preference가 생성되었으면 캐시 저장
-            if "preference" in result:
+            if "preference" in result and favorite_song_ids:
                 save_preference_cache(memberId, favorite_song_ids, result["preference"])
         
         if "error" in result:

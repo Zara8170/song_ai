@@ -156,7 +156,7 @@ def start_scheduler():
     # 매일 새벽 3시에 캐시 삭제 및 재생성 작업 스케줄링
     scheduler.add_job(
         func=regenerate_all_recommendations,
-        trigger=CronTrigger(hour=3, minute=0),  # 매일 오전 3시
+        trigger=CronTrigger(hour=3, minute=0),
         id='regenerate_redis_cache',
         name='Redis 추천+취향 캐시 재생성',
         replace_existing=True
