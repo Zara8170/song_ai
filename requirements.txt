@@ -7,3 +7,7 @@ SQLAlchemy
 PyMySQL
 python-dotenv
 elasticsearch
+redis
+APScheduler
+pytz
+cryptography

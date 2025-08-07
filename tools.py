@@ -1,26 +1,30 @@
+# 기존 tools.py는 이제 다른 모듈들의 함수를 re-export하는 역할만 합니다.
+# 하위 호환성을 위해 기존 import 구조를 유지합니다.
 
-# tools.py
+from database_service import (
+    get_candidate_songs,
+    get_favorite_songs_info,
+    get_all_active_users_with_favorites
+)
 
-def recommend_from_favorites():
-    """
-    사용자의 즐겨찾기 목록을 기반으로 노래를 추천합니다.
-    (기존 로직)
-    """
-    print("즐겨찾기 기반 추천 로직 실행")
-    # 여기에 기존의 즐겨찾기 추천 코드를 넣으세요.
-    return ["즐겨찾기 노래 1", "즐겨찾기 노래 2"]
+from recommendation_service import recommend_songs
 
-def recommend_by_artist(artist_name: str):
-    """
-    특정 아티스트의 노래를 추천합니다.
-    (신규 로직)
-    """
-    print(f"아티스트 '{artist_name}' 기반 추천 로직 실행")
-    # 실제로는 여기서 외부 API를 호출하거나 DB를 조회해야 합니다.
-    # 예시로 하드코딩된 데이터를 반환합니다.
-    if artist_name == "요네즈 켄시":
-        return ["Lemon", "KICK BACK", "orion"]
-    elif artist_name == "아이유":
-        return ["라일락", "밤편지", "Celebrity"]
-    else:
-        return [f"{artist_name}의 노래를 찾을 수 없습니다."]
+from ai_service import (
+    _analyze_user_preference,
+    _ai_recommend_songs,
+    _make_tagline
+)
+
+from utils import _get_title_artist
+
+# 기존 코드와의 호환성을 위해 모든 함수를 여기서 사용할 수 있도록 export
+__all__ = [
+    'get_candidate_songs',
+    'get_favorite_songs_info', 
+    'get_all_active_users_with_favorites',
+    'recommend_songs',
+    '_analyze_user_preference',
+    '_ai_recommend_songs',
+    '_make_tagline',
+    '_get_title_artist'
+]

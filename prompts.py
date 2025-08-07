@@ -1,46 +1,20 @@
 from langchain_core.prompts import PromptTemplate
 
-AGENT_PROMPT = PromptTemplate.from_template(
-    """
-You are a helpful assistant whose role is to recommend karaoke songs to users.
-
-Here is the list of candidate songs:
-{song_list}
-
-User message: {user_message}
-Favorite songs: {favorites}
-
-Select 5 songs from the candidate list that best match the user's taste.
-Recommend only songs that appear in the candidate list, and include each song's title, artist, tj_number, and ky_number.
-Do not add any closing remarks (e.g., \"Enjoy listening\").
-Always answer in Korean.
-
-User: {input}
-
-{agent_scratchpad}
+# 사용자 취향 분석을 위한 프롬프트
+ANALYZE_PREFERENCE_PROMPT = PromptTemplate.from_template(
+    """즐겨찾기: {favorites}
+JSON: {{"preferred_genres":[],"preferred_moods":[],"overall_taste":""}}
 """
 )
 
+# 추천 프롬프트
 RECOMMEND_PROMPT = PromptTemplate.from_template(
-    """
-Below is the user's favorite song list:
-{favorites}
-
-Below is the list of candidate songs for recommendation:
-{song_list}
-
-From the above candidate list, recommend 5 songs that best match the user's taste in the following markdown format:
-
-Here are 5 songs recommended based on your favorite songs:
-
-1. **Song Title** - Artist  
-   tj_number: ...  
-   ky_number: ...  
-2. ...
-
-Number each song, make the song title bold, artist in regular text, and display tj_number and ky_number on separate lines for each song.
-**You must only recommend songs from the candidate list above (from the database). Do not invent or add any songs that are not in the list.**
-Always end with the sentence: 'I hope these songs match your taste!'
-Always answer in Korean.
+    """취향: {user_preference}
+곡목록: {song_list}
+{target_count}곡 선별 JSON: {{"recommended_songs":[{{"title":"","artist_kr":"","tj_number":0,"ky_number":0,"mood":"","genre":""}}]}}
 """
+)
+
+GROUP_TAGLINE_PROMPT = PromptTemplate.from_template(
+    """{label} 그룹의 10-25자 태그라인 생성. 대표곡: {sample_songs}. 이모지 1-2개 포함, 간결하게."""
 )
