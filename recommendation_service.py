@@ -1,138 +1,184 @@
 from collections import defaultdict
 from random import sample
+import re
 from database_service import get_favorite_songs_info, get_candidate_songs
 from ai_service import _analyze_user_preference, _ai_recommend_songs, _make_tagline
 from utils import _get_title_artist
 
+# ====== 정규화/매칭 유틸 ======
+PRIMARY_GENRES = {"J-pop","팝","록","발라드","힙합","인디 팝","일렉트로 팝"}
+MOOD_MAP = {"에너지":"신나는","강렬":"강렬","감성적":"서정적","잔잔":"잔잔"}
+_PAREN_RE = re.compile(r"\s*[\(\[（【].*?[\)\]）】]\s*")
+
+def _normalize_genre(g: str) -> tuple[str, list[str]]:
+    if not g: return "", []
+    parts = [p.strip() for p in g.split(",") if p.strip()]
+    primary = next((p for p in parts if p in PRIMARY_GENRES), parts[0] if parts else "")
+    return primary, parts
+
+def _normalize_mood(m: str) -> str:
+    return MOOD_MAP.get(m, m or "")
+
+def _norm(s: str) -> str:
+    if not s: return ""
+    s = s.lower().strip()
+    s = _PAREN_RE.sub(" ", s)
+    s = re.sub(r"[^0-9a-z가-힣ぁ-ゔァ-ヴー一-龥\s]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def _soft_match(a: str, b: str) -> bool:
+    a, b = _norm(a), _norm(b)
+    if not a or not b: return False
+    return a == b or a in b or b in a or a.startswith(b) or b.startswith(a)
+
 def _match_ai_recommendations_with_db(ai_recs: list[dict], candidate_songs: list[dict]) -> list[dict]:
-    """AI 추천 결과와 DB의 실제 노래 정보를 매칭합니다."""
+    """AI 추천 결과와 DB의 실제 노래 정보를 매칭 (완전/유사 일치)"""
     matched_songs = []
-    
-    for i, ai_rec in enumerate(ai_recs):
+    used_ids = set()
+
+    for ai_rec in ai_recs:
         ai_title = ai_rec.get("title", "").strip()
         ai_artist = ai_rec.get("artist_kr", "").strip()
-        
-        found_match = False
+        found = None
+
+        # 완전 일치
         for db_song in candidate_songs:
-            db_title = db_song.get("title_kr", "").strip()
-            db_artist = db_song.get("artist_kr", "").strip()
-            
-            if ai_title == db_title and ai_artist == db_artist:
-                matched_song = db_song.copy()
-                matched_song["mood"] = ai_rec.get("mood", db_song.get("mood", ""))
-                matched_song["genre"] = ai_rec.get("genre", db_song.get("genre", ""))
-                matched_songs.append(matched_song)
-                found_match = True
+            if db_song.get("song_id") in used_ids: 
+                continue
+            if ai_title == (db_song.get("title_kr") or "").strip() and ai_artist == (db_song.get("artist_kr") or "").strip():
+                found = db_song
                 break
-    
+        # 유사 일치
+        if not found:
+            for db_song in candidate_songs:
+                if db_song.get("song_id") in used_ids: 
+                    continue
+                if _soft_match(ai_rec.get("title",""), db_song.get("title_kr","")) and \
+                   _soft_match(ai_rec.get("artist_kr",""), db_song.get("artist_kr","")):
+                    found = db_song
+                    break
+
+        if found:
+            used_ids.add(found.get("song_id"))
+            matched_song = found.copy()
+            matched_song["mood"] = ai_rec.get("mood", found.get("mood", ""))
+            matched_song["genre"] = ai_rec.get("genre", found.get("genre", ""))
+            matched_song["reason"] = ai_rec.get("reason", "")
+            matched_songs.append(matched_song)
+
+    # 부족분은 match_score 높은 순으로 보충
     if len(matched_songs) < len(ai_recs):
-        remaining_count = len(ai_recs) - len(matched_songs)
-        remaining_songs = sample(candidate_songs, min(remaining_count, len(candidate_songs)))
-        matched_songs.extend(remaining_songs)
-    
+        need = len(ai_recs) - len(matched_songs)
+        leftovers = [c for c in candidate_songs if c.get("song_id") not in used_ids]
+        leftovers.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+        matched_songs.extend(leftovers[:need])
+
     return matched_songs
 
-def _group_songs_fixed(recs: list[dict]) -> dict[str, list[dict]]:
-    """
-    고정된 4개 그룹으로 분류: 분위기 2개, 장르 2개
-    각 그룹은 최소 3개의 노래를 포함하도록 함
-    """
+def _group_songs_dynamic(recs: list[dict], total_groups: int = 4, max_per_group: int = 6) -> dict[str, list[dict]]:
+    """분위기/장르 분포를 보고 동적 그룹 구성"""
     mood_groups = defaultdict(list)
     genre_groups = defaultdict(list)
-    
+
     for song in recs:
-        mood = song.get("mood")
-        genre = song.get("genre")
-        
-        if mood:
-            mood_groups[mood].append(song)
-        if genre:
-            genre_groups[genre].append(song)
-    
+        if song.get("mood"):  mood_groups[song["mood"]].append(song)
+        if song.get("genre"): genre_groups[song["genre"]].append(song)
+
     top_moods = sorted(mood_groups.items(), key=lambda x: len(x[1]), reverse=True)
     top_genres = sorted(genre_groups.items(), key=lambda x: len(x[1]), reverse=True)
-    
-    final_groups = {}
-    used_songs = set()
-    
-    mood_count = 0
-    for mood, songs in top_moods:
-        if mood_count >= 2:
-            break
-        if len(songs) >= 3:
-            available_songs = [s for s in songs if s.get("song_id") not in used_songs]
-            if len(available_songs) >= 3:
-                selected_songs = available_songs[:6]
-                final_groups[mood] = selected_songs
-                used_songs.update(s.get("song_id") for s in selected_songs if s.get("song_id"))
-                mood_count += 1
-    
-    genre_count = 0
-    for genre, songs in top_genres:
-        if genre_count >= 2:
-            break
-        if len(songs) >= 3:
-            available_songs = [s for s in songs if s.get("song_id") not in used_songs]
-            if len(available_songs) >= 3:
-                selected_songs = available_songs[:6]
-                final_groups[genre] = selected_songs
-                used_songs.update(s.get("song_id") for s in selected_songs if s.get("song_id"))
-                genre_count += 1
-    
-    remaining_songs = [s for s in recs if s.get("song_id") not in used_songs]
-    
-    while mood_count < 2 and len(remaining_songs) >= 3:
-        unused_moods = [mood for mood, songs in mood_groups.items() 
-                       if mood not in final_groups and len(songs) >= 1]
-        
-        if unused_moods:
-            mood_name = unused_moods[0]
-            final_groups[mood_name] = remaining_songs[:6]
-            remaining_songs = remaining_songs[6:]
-            mood_count += 1
-        else:
-            fallback_moods = ["차분한", "신나는", "따뜻한", "시원한"]
-            mood_name = fallback_moods[mood_count]
-            final_groups[mood_name] = remaining_songs[:6]
-            remaining_songs = remaining_songs[6:]
-            mood_count += 1
-    
-    while genre_count < 2 and len(remaining_songs) >= 3:
-        unused_genres = [genre for genre, songs in genre_groups.items() 
-                        if genre not in final_groups and len(songs) >= 1]
-        
-        if unused_genres:
-            genre_name = unused_genres[0]
-            final_groups[genre_name] = remaining_songs[:6]
-            remaining_songs = remaining_songs[6:]
-            genre_count += 1
-        else:
-            fallback_genres = ["팝", "록", "발라드", "댄스"]
-            genre_name = fallback_genres[genre_count]
-            final_groups[genre_name] = remaining_songs[:6]
-            remaining_songs = remaining_songs[6:]
-            genre_count += 1
-    
+
+    final_groups, used_ids = {}, set()
+    mood_total = sum(len(v) for _, v in top_moods)
+    genre_total = sum(len(v) for _, v in top_genres)
+    if mood_total + genre_total == 0:
+        return final_groups
+    mood_share = max(1, min(total_groups-1, round(total_groups * (mood_total / (mood_total+genre_total or 1)))))
+    genre_share = total_groups - mood_share
+
+    for mood, songs in top_moods[:mood_share]:
+        avail = [s for s in songs if s.get("song_id") not in used_ids]
+        if avail:
+            chosen = avail[:max_per_group]
+            final_groups[mood] = chosen
+            used_ids.update(s.get("song_id") for s in chosen if s.get("song_id") is not None)
+
+    for genre, songs in top_genres[:genre_share]:
+        avail = [s for s in songs if s.get("song_id") not in used_ids]
+        if avail:
+            chosen = avail[:max_per_group]
+            final_groups[genre] = chosen
+            used_ids.update(s.get("song_id") for s in chosen if s.get("song_id") is not None)
+
+    while len(final_groups) < total_groups:
+        remain = [s for s in recs if s.get("song_id") not in used_ids]
+        if not remain: break
+        label = f"추천 #{len(final_groups)+1}"
+        chosen = remain[:max_per_group]
+        final_groups[label] = chosen
+        used_ids.update(s.get("song_id") for s in chosen if s.get("song_id") is not None)
     return final_groups
 
-def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None) -> list[dict]:
-    """추천된 노래들을 그룹화하여 최종 payload를 구성합니다."""
-    grouped = _group_songs_fixed(recs)
+def _merge_small_groups(grouped: dict[str, list[dict]], min_size: int = 3) -> dict[str, list[dict]]:
+    if not grouped: return grouped
+    big = {k:v for k,v in grouped.items() if len(v) >= min_size}
+    small = {k:v for k,v in grouped.items() if len(v) <  min_size}
+    if not small: return grouped
+    def _sim(a,b):
+        a,b=a.lower(),b.lower()
+        return 2 if a==b else (1 if (a in b or b in a) else 0)
+    for k, songs in small.items():
+        best, best_s = None, -1
+        for kk in big.keys():
+            s = _sim(k, kk)
+            if s > best_s:
+                best, best_s = kk, s
+        if best is None and big:
+            best = next(iter(big.keys()))
+        if best:
+            big[best] = (big.get(best, []) + songs)[:6]
+        else:
+            big[k] = songs
+    return big
+
+def _dedupe_groups(grouped: dict[str, list[dict]]) -> dict[str, list[dict]]:
+    seen = set()
+    for label, songs in grouped.items():
+        uniq = []
+        for s in songs:
+            sid = s.get("song_id") or (s.get("title_kr"), s.get("artist_kr"))
+            if sid in seen:
+                continue
+            seen.add(sid)
+            uniq.append(s)
+        grouped[label] = uniq
+    return grouped
+
+def _autogen_reason(song: dict) -> str:
+    reasons = []
+    mc = song.get("matched_criteria", [])
+    if "like_artist" in mc: reasons.append("좋아한 아티스트와 동일")
+    if "preferred_genre" in mc or "like_genre" in mc: reasons.append(f"{song.get('genre','')} 장르 선호와 일치")
+    if "preferred_mood" in mc: reasons.append(f"{song.get('mood','')} 무드와 잘 맞음")
+    if not reasons and song.get("match_score",0) > 0: reasons.append("취향 요소와 부분 일치")
+    return " · ".join(reasons) or "분위기와 조화로운 곡"
+
+def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None, user_preference: dict = None) -> list[dict]:
+    """그룹화된 추천곡 payload 생성 (동적+병합+중복 제거)"""
+    grouped = _group_songs_dynamic(recs)
+    grouped = _merge_small_groups(grouped, min_size=3)
+    grouped = _dedupe_groups(grouped)
     payload = []
-    
-    if favorite_song_ids is None:
-        favorite_song_ids = []
-    
+
+    favorite_song_ids = favorite_song_ids or []
+
     for label, songs in grouped.items():
         norm_songs = []
-        
         for s in songs:
-            song_id = s.get("song_id")
-            if song_id and song_id in favorite_song_ids:
+            if s.get("song_id") in favorite_song_ids:
                 continue
-                
             title_jp, title_kr, title_en, artist, artist_kr = _get_title_artist(s)
-            
+            # 표기 포맷 정리(번호 null 처리 등은 프론트에서 해도 OK)
             norm_songs.append({
                 "title_jp": title_jp,
                 "title_kr": title_kr,
@@ -142,82 +188,85 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
                 "tj_number": s.get("tj_number"),
                 "ky_number": s.get("ky_number"),
             })
-        
         if norm_songs:
-            tagline = _make_tagline(label, norm_songs)
+            tagline = _make_tagline(label, norm_songs, user_preference)
             payload.append({
                 "label": label,
                 "songs": norm_songs,
-                "tagline": tagline,
+                "tagline": tagline
             })
-    
     return payload
 
 def _normalize_candidates_for_cache(candidates: list[dict]) -> list[dict]:
-    """후보곡을 캐시용으로 정규화합니다."""
     normalized = []
-    for song in candidates:
-        title_jp, title_kr, title_en, artist, artist_kr = _get_title_artist(song)
+    for s in candidates:
+        title_jp, title_kr, title_en, artist, artist_kr = _get_title_artist(s)
         normalized.append({
-            "song_id": song.get("song_id"),
+            "song_id": s.get("song_id"),
             "title_jp": title_jp,
             "title_kr": title_kr,
             "title_en": title_en,
             "artist": artist,
             "artist_kr": artist_kr,
-            "genre": song.get("genre"),
-            "mood": song.get("mood"),
-            "tj_number": song.get("tj_number"),
-            "ky_number": song.get("ky_number"),
-            "recommendation_type": song.get("recommendation_type"),
-            "matched_criteria": song.get("matched_criteria", [])
+            "genre": s.get("genre"),
+            "mood": s.get("mood"),
+            "tj_number": s.get("tj_number"),
+            "ky_number": s.get("ky_number"),
+            "recommendation_type": s.get("recommendation_type"),
+            "matched_criteria": s.get("matched_criteria", []),
+            "match_score": s.get("match_score", 0),
+            "reason": s.get("reason", "")
         })
     return normalized
 
 def recommend_songs(favorite_song_ids: list[int], cached_preference: dict = None) -> dict:
-    """메인 추천 함수 - 사용자의 선호 노래를 기반으로 추천 결과와 후보곡을 생성합니다."""
+    """메인 추천 함수"""
     if not favorite_song_ids:
         candidate_songs = get_candidate_songs([], limit=100)
-        if not candidate_songs:
-            return {"error": "추천할 노래를 찾지 못했습니다."}
-        
+        for s in candidate_songs:
+            pg, subs = _normalize_genre(s.get("genre",""))
+            s["genre"] = pg
+            s["sub_genres"] = subs
+            s["mood"] = _normalize_mood(s.get("mood",""))
+            if not s.get("reason"): s["reason"] = _autogen_reason(s)
         recommended = sample(candidate_songs, min(20, len(candidate_songs)))
         groups_payload = _build_grouped_payload(recommended, [])
-        normalized_candidates = _normalize_candidates_for_cache(candidate_songs)
-        
         return {
             "groups": groups_payload,
-            "candidates": normalized_candidates
+            "candidates": _normalize_candidates_for_cache(candidate_songs)
         }
-    
+
     favorite_songs = get_favorite_songs_info(favorite_song_ids)
-    
-    if cached_preference:
-        user_preference = cached_preference
-    else:
-        user_preference = _analyze_user_preference(favorite_songs)
-    
-    candidate_songs = get_candidate_songs(favorite_song_ids, limit=100)
+    user_preference = cached_preference or _analyze_user_preference(favorite_songs)
+
+    candidate_songs = get_candidate_songs(
+        favorite_song_ids,
+        limit=100,
+        preferred_genres=user_preference.get("preferred_genres") if user_preference else None,
+        preferred_moods=user_preference.get("preferred_moods") if user_preference else None
+    )
     if not candidate_songs:
         return {"error": "추천할 노래를 찾지 못했습니다."}
 
-    ai_recommended = _ai_recommend_songs(candidate_songs, user_preference, target_count=20)
-    
-    if not ai_recommended:
-        ai_recommended = sample(candidate_songs, min(20, len(candidate_songs)))
-    else:
-        ai_recommended = _match_ai_recommendations_with_db(ai_recommended, candidate_songs)
-    
-    groups_payload = _build_grouped_payload(ai_recommended, favorite_song_ids)
-    
-    normalized_candidates = _normalize_candidates_for_cache(candidate_songs)
+    for s in candidate_songs:
+        pg, subs = _normalize_genre(s.get("genre",""))
+        s["genre"] = pg
+        s["sub_genres"] = subs
+        s["mood"] = _normalize_mood(s.get("mood",""))
+        if not s.get("reason"): s["reason"] = _autogen_reason(s)
 
-    result = {
+    ai_recommended = _ai_recommend_songs(candidate_songs, user_preference, target_count=20)
+    if ai_recommended:
+        ai_recommended = _match_ai_recommendations_with_db(ai_recommended, candidate_songs)
+    else:
+        candidate_songs.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+        ai_recommended = candidate_songs[:20]
+
+    groups_payload = _build_grouped_payload(ai_recommended, favorite_song_ids, user_preference)
+
+    return {
         "groups": groups_payload,
-        "candidates": normalized_candidates
+        "candidates": _normalize_candidates_for_cache(candidate_songs),
+        "preference": user_preference,
+        "favorite_song_ids": favorite_song_ids or []
     }
-    
-    if not cached_preference and user_preference:
-        result["preference"] = user_preference
-    
-    return result 

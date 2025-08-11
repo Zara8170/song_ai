@@ -11,3 +11,5 @@ redis
 APScheduler
 pytz
 cryptography
+celery[redis]==5.3.6
+flower==2.0.1

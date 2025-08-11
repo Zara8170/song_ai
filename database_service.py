@@ -1,6 +1,7 @@
 import os
 import pymysql
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 
@@ -12,136 +13,154 @@ def get_db_connection():
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         db=os.getenv("DB_NAME"),
-        charset="utf8"
+        charset="utf8",
+        cursorclass=pymysql.cursors.DictCursor,
     )
 
-def get_candidate_songs(favorite_song_ids: list[int], limit: int = 100) -> list[dict]:
+# --- 컬럼 존재 체크 → is_active 옵션 처리 ---
+def _has_column(cur, table: str, column: str) -> bool:
+    cur.execute(f"SHOW COLUMNS FROM `{table}` LIKE %s", (column,))
+    return cur.fetchone() is not None
+
+def _active_clause(cur, table: str = "song") -> str:
+    return " AND is_active = TRUE" if _has_column(cur, table, "is_active") else ""
+
+# --- 스코어 계산 ---
+def _score_candidate(song: dict,
+                     preferred_genres: Optional[list[str]],
+                     preferred_moods: Optional[list[str]],
+                     like_genres: list[str],
+                     like_artists: list[str]) -> int:
+    score = 0
+    g = (song.get("genre") or "").strip()
+    m = (song.get("mood") or "").strip()
+    a = (song.get("artist_kr") or "").strip()
+    if preferred_genres and g in preferred_genres:
+        score += 2
+    if like_genres and g in like_genres:
+        score += 2
+    if preferred_moods and m in preferred_moods:
+        score += 1
+    if like_artists and a in like_artists:
+        score += 2
+    return score
+
+def get_candidate_songs(
+    favorite_song_ids: list[int],
+    limit: int = 100,
+    preferred_genres: Optional[list[str]] = None,
+    preferred_moods: Optional[list[str]] = None
+) -> list[dict]:
     """
-    추천을 위한 후보 노래들을 가져옵니다.
-    사용자의 선호 노래를 기반으로 유사한 노래들과 랜덤 노래들을 조합합니다.
+    추천 후보 노래:
+    - 좋아요 기반 장르/아티스트 & LLM의 preferred_genres/moods를 반영
+    - 전체 풀에서 가중치(match_score) 계산 후 상위 정렬 + 부족분 랜덤 보충
     """
     conn = get_db_connection()
-    cur = conn.cursor(pymysql.cursors.DictCursor)
+    cur = conn.cursor()
 
     try:
+        like_genres, like_artists = [], []
+
+        # 좋아요 곡 정보
         if favorite_song_ids:
-            fav_ids_str = ",".join(map(str, favorite_song_ids))
-            
-            cur.execute(f"SELECT * FROM song WHERE song_id IN ({fav_ids_str})")
+            placeholders = ",".join(["%s"] * len(favorite_song_ids))
+            cur.execute(
+                f"SELECT * FROM song WHERE song_id IN ({placeholders}){_active_clause(cur)}",
+                tuple(favorite_song_ids),
+            )
             fav_info = cur.fetchall()
+            like_genres = [s["genre"] for s in fav_info if s.get("genre")]
+            like_artists = [s["artist_kr"] for s in fav_info if s.get("artist_kr")]
 
-            genres = [s['genre'] for s in fav_info if s.get('genre')]
-            artists = [s['artist_kr'] for s in fav_info if s.get('artist_kr')]
-            
-            similar_songs = []
-            if genres or artists:
-                genre_list = "','".join(set(genres)) if genres else ""
-                artist_list = "','".join(set(artists)) if artists else ""
-                genre_clause = f"genre IN ('{genre_list}')" if genres else "1=0"
-                artist_clause = f"artist_kr IN ('{artist_list}')" if artists else "1=0"
-                
-                sql = (f"SELECT * FROM song WHERE ({genre_clause} OR {artist_clause}) "
-                       f"AND song_id NOT IN ({fav_ids_str}) ORDER BY RAND() LIMIT {limit//2}")
-                cur.execute(sql)
-                similar_songs = cur.fetchall()
-                
-                # 취향 기반 노래에 표시 추가
-                for song in similar_songs:
-                    song['recommendation_type'] = 'preference'
-                    # 추가로 매칭된 기준도 표시
-                    song['matched_criteria'] = []
-                    if song.get('genre') and song['genre'] in genres:
-                        song['matched_criteria'].append('genre')
-                    if song.get('artist_kr') and song['artist_kr'] in artists:
-                        song['matched_criteria'].append('artist')
-            
-            remaining_limit = limit - len(similar_songs)
-            if remaining_limit > 0:
-                sql = (f"SELECT * FROM song WHERE song_id NOT IN ({fav_ids_str}) "
-                       f"ORDER BY RAND() LIMIT {remaining_limit}")
-                cur.execute(sql)
-                random_songs = cur.fetchall()
-                
-                # 랜덤 노래에 표시 추가
-                for song in random_songs:
-                    song['recommendation_type'] = 'random'
-                    song['matched_criteria'] = []
-                    
-                similar_songs.extend(random_songs)
-            
-            candidates = similar_songs
+        # 전체 풀 조회
+        if favorite_song_ids:
+            placeholders = ",".join(["%s"] * len(favorite_song_ids))
+            cur.execute(
+                f"SELECT * FROM song WHERE 1=1{_active_clause(cur)} AND song_id NOT IN ({placeholders})",
+                tuple(favorite_song_ids),
+            )
         else:
-            cur.execute(f"SELECT * FROM song ORDER BY RAND() LIMIT {limit}")
-            candidates = cur.fetchall()
-            # 선호도가 없는 경우 모두 랜덤으로 표시
-            for song in candidates:
-                song['recommendation_type'] = 'random'
-                song['matched_criteria'] = []
+            cur.execute(f"SELECT * FROM song WHERE 1=1{_active_clause(cur)}")
+        pool = cur.fetchall()
 
-        return candidates
+        # 스코어 및 근거 기록
+        from random import shuffle
+        shuffle(pool)
+        for s in pool:
+            s["recommendation_type"] = "pool"
+            s["matched_criteria"] = []
+            s["match_score"] = _score_candidate(s, preferred_genres, preferred_moods, like_genres, like_artists)
+            if preferred_genres and s.get("genre") in preferred_genres:
+                s["matched_criteria"].append("preferred_genre")
+            if preferred_moods and s.get("mood") in preferred_moods:
+                s["matched_criteria"].append("preferred_mood")
+            if like_genres and s.get("genre") in like_genres:
+                s["matched_criteria"].append("like_genre")
+            if like_artists and s.get("artist_kr") in like_artists:
+                s["matched_criteria"].append("like_artist")
+
+        pool.sort(key=lambda x: x.get("match_score", 0), reverse=True)
+
+        # 상위 limit + 부족분 보충
+        top = pool[:limit]
+        if len(top) < limit:
+            remain = [s for s in pool if s not in top]
+            shuffle(remain)
+            top.extend(remain[: max(0, limit - len(top))])
+
+        for s in top:
+            if s.get("recommendation_type") == "pool":
+                s["recommendation_type"] = "scored" if s.get("match_score", 0) > 0 else "random"
+
+        return top[:limit]
+
     finally:
         cur.close()
         conn.close()
 
 def get_favorite_songs_info(favorite_song_ids: list[int]) -> list[dict]:
-    """사용자가 좋아하는 노래들의 상세 정보를 가져옵니다."""
+    """사용자가 좋아하는 노래들의 상세 정보."""
     if not favorite_song_ids:
         return []
-        
     conn = get_db_connection()
-    cur = conn.cursor(pymysql.cursors.DictCursor)
-
+    cur = conn.cursor()
     try:
-        fav_ids_str = ",".join(map(str, favorite_song_ids))
-        cur.execute(f"SELECT * FROM song WHERE song_id IN ({fav_ids_str})")
-        favorites = cur.fetchall()
-        return favorites
+        placeholders = ",".join(["%s"] * len(favorite_song_ids))
+        cur.execute(
+            f"SELECT * FROM song WHERE song_id IN ({placeholders}){_active_clause(cur)}",
+            tuple(favorite_song_ids),
+        )
+        return cur.fetchall()
     finally:
         cur.close()
         conn.close()
 
 def get_all_active_users_with_favorites() -> dict[str, list[int]]:
     """
-    DB에서 USER 역할을 가진 모든 활성 사용자와 그들의 좋아하는 노래 ID를 가져옵니다.
-    Returns: {member_id: [favorite_song_ids]}
+    USER 역할의 모든 활성 사용자와 좋아요 곡 IDs 반환: {member_id: [song_id, ...]}
     """
     conn = get_db_connection()
-    cur = conn.cursor(pymysql.cursors.DictCursor)
-
+    cur = conn.cursor()
     try:
-        # USER 역할을 가진 사용자들 조회
-        user_query = """
-        SELECT DISTINCT m.member_id 
-        FROM member m 
-        JOIN member_role_list mrl ON m.member_id = mrl.id 
-        WHERE mrl.role = 'USER'
-        """
-        cur.execute(user_query)
+        cur.execute("""
+            SELECT DISTINCT m.member_id
+            FROM member m
+            JOIN member_role_list mrl ON m.member_id = mrl.id
+            WHERE mrl.role = 'USER'
+        """)
         users = cur.fetchall()
-        
-        user_favorites = {}
-        
-        for user in users:
-            member_id = str(user['member_id'])
-            
-            # 각 사용자의 좋아하는 노래 조회
-            favorites_query = """
-            SELECT sl.song_id 
-            FROM song_like sl 
-            WHERE sl.member_id = %s
-            """
-            cur.execute(favorites_query, (user['member_id'],))
-            favorite_songs = cur.fetchall()
-            
-            # song_id 리스트로 변환
-            favorite_song_ids = [song['song_id'] for song in favorite_songs]
-            user_favorites[member_id] = favorite_song_ids
-        
-        return user_favorites
-        
+
+        user_favs: dict[str, list[int]] = {}
+        for u in users:
+            mid = str(u["member_id"])
+            cur.execute("SELECT sl.song_id FROM song_like sl WHERE sl.member_id = %s", (u["member_id"],))
+            favs = cur.fetchall()
+            user_favs[mid] = [r["song_id"] for r in favs]
+        return user_favs
     except Exception as e:
-        print(f"DB에서 사용자 정보 가져오기 실패: {e}")
+        print(f"[DB] 사용자 조회 실패: {e}")
         return {}
     finally:
         cur.close()
-        conn.close() 
+        conn.close()
