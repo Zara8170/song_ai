@@ -62,8 +62,6 @@ services:
       - "10000" # 60초에 10000개 변경 시
       - --dir
       - /data # 반드시 볼륨 경로
-    ports:
-      - "6379:6379"
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
