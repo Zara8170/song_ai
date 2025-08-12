@@ -1,7 +1,7 @@
 services:
   api:
-    image: ai-stack:latest
-    build: .
+    # build: .
+    image: ${AI_DOCKER_IMAGE_NAME}:latest # Artifact Registry 이미지를 사용하도록 변경
     env_file: .env
     depends_on:
       redis:
@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ai-stack:latest
+    image: ${AI_DOCKER_IMAGE_NAME}:latest
     env_file: .env
     environment:
       - CELERY_BROKER_URL=${REDIS_URL}
@@ -24,7 +24,7 @@ services:
     restart: unless-stopped
 
   flower:
-    image: ai-stack:latest
+    image: ${AI_DOCKER_IMAGE_NAME}:latest
     env_file: .env
     environment:
       - CELERY_BROKER_URL=${REDIS_URL}
@@ -50,20 +50,20 @@ services:
       - --requirepass
       - ${REDIS_PASSWORD}
       - --appendonly
-      - "yes" # AOF 켜기
+      - "yes"
       - --appendfsync
       - everysec
       - --save
       - "900"
-      - "1" # RDB 스냅샷(선택): 900초에 1개 변경 시
+      - "1"
       - --save
       - "300"
-      - "10" # 300초에 10개 변경 시
+      - "10"
       - --save
       - "60"
-      - "10000" # 60초에 10000개 변경 시
+      - "10000"
       - --dir
-      - /data # 반드시 볼륨 경로
+      - /data
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
