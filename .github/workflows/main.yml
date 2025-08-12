@@ -40,7 +40,11 @@ jobs:
 
     steps:
       - name: Decode SSH Key
-        run: echo "DECODED_SSH_KEY=$(echo ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }} | base64 --decode)" >> $GITHUB_ENV
+        run: |
+          DECODED_KEY=$(echo "${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}" | base64 --decode)
+          echo "DECODED_SSH_KEY<<EOF" >> $GITHUB_ENV
+          echo "$DECODED_KEY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
       
       - name: SSH and Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
