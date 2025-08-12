@@ -17,6 +17,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: List files in the repository
+      run: ls -R
+
     - name: Authenticate to Google Cloud
       id: auth
       uses: 'google-github-actions/auth@v2'
@@ -47,26 +50,14 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
           script: |
-            # 환경 변수 설정
             export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
-
-            # ✅ VM에 clone된 실제 AI 서버 프로젝트 경로로 이동하도록 수정했습니다.
+            
+            # VM에 clone된 실제 AI 서버 프로젝트 경로로 이동
             cd ~/zara8170/song_ai/song_ai-290c6b16aad0b83e75ffd44f00bbfd2c988a0622
 
-            # 최신 docker-compose.yml 파일을 git에서 받아옵니다.
             git pull origin main
-
-            # Artifact Registry 주소만 추출
             REGISTRY_LOCATION=$(echo "$AI_DOCKER_IMAGE_NAME" | cut -d'/' -f1)
-            
-            # Google Cloud에 로그인하여 private registry에 접근
             gcloud auth configure-docker "$REGISTRY_LOCATION"
-
-            # 최신 이미지를 받아옵니다.
             docker-compose pull
-
-            # docker-compose로 AI 서비스를 재시작합니다.
             docker-compose up -d --force-recreate --remove-orphans
-
-            # 불필요한 이전 이미지들을 삭제합니다.
             docker image prune -f
