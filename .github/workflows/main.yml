@@ -1,0 +1,72 @@
+name: CI/CD for AI Server
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-push-ai:
+    name: Build and Push AI Server Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}'
+
+    - name: Configure Docker to use Google Cloud credentials
+      run: |
+        REGISTRY_LOCATION=$(echo "${{ secrets.AI_DOCKER_IMAGE_NAME }}" | cut -d'/' -f1)
+        gcloud auth configure-docker "$REGISTRY_LOCATION"
+
+    - name: Build and Push Docker image
+      working-directory: ./zara8170/song_ai/song_ai-290c6b16aad0b83e75ffd44f00bbfd2c988a0622
+      run: |
+        docker build -t ${{ secrets.AI_DOCKER_IMAGE_NAME }}:latest .
+        docker push ${{ secrets.AI_DOCKER_IMAGE_NAME }}:latest
+
+  deploy-ai:
+    name: Deploy AI Server to GCP VM
+    needs: build-and-push-ai
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH and Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_VM_HOST }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
+          script: |
+            # 환경 변수 설정
+            export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
+
+            # AI 서버 프로젝트 디렉토리로 이동
+            cd ~/song_ai 
+
+            # 최신 docker-compose.yml 파일을 git에서 받아옵니다.
+            git pull origin main
+
+            # Artifact Registry 주소만 추출
+            REGISTRY_LOCATION=$(echo "$AI_DOCKER_IMAGE_NAME" | cut -d'/' -f1)
+            
+            # Google Cloud에 로그인하여 private registry에 접근
+            gcloud auth configure-docker "$REGISTRY_LOCATION"
+
+            # 최신 이미지를 받아옵니다.
+            docker-compose pull
+
+            # docker-compose로 AI 서비스를 재시작합니다.
+            docker-compose up -d --force-recreate --remove-orphans
+
+            # 불필요한 이전 이미지들을 삭제합니다.
+            docker image prune -f
