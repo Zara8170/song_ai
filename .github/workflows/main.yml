@@ -50,8 +50,8 @@ jobs:
             # 환경 변수 설정
             export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
 
-            # AI 서버 프로젝트 디렉토리로 이동
-            cd ~/song_ai 
+            # ✅ VM에 clone된 실제 AI 서버 프로젝트 경로로 이동하도록 수정했습니다.
+            cd ~/zara8170/song_ai/song_ai-290c6b16aad0b83e75ffd44f00bbfd2c988a0622
 
             # 최신 docker-compose.yml 파일을 git에서 받아옵니다.
             git pull origin main
