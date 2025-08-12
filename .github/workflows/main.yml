@@ -17,9 +17,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: List files in the repository
-      run: ls -R
-
     - name: Authenticate to Google Cloud
       id: auth
       uses: 'google-github-actions/auth@v2'
@@ -32,7 +29,6 @@ jobs:
         gcloud auth configure-docker "$REGISTRY_LOCATION"
 
     - name: Build and Push Docker image
-      working-directory: ./zara8170/song_ai/song_ai-290c6b16aad0b83e75ffd44f00bbfd2c988a0622
       run: |
         docker build -t ${{ secrets.AI_DOCKER_IMAGE_NAME }}:latest .
         docker push ${{ secrets.AI_DOCKER_IMAGE_NAME }}:latest
@@ -52,8 +48,7 @@ jobs:
           script: |
             export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
             
-            # VM에 clone된 실제 AI 서버 프로젝트 경로로 이동
-            cd ~/zara8170/song_ai/song_ai-290c6b16aad0b83e75ffd44f00bbfd2c988a0622
+            cd ~/song_ai
 
             git pull origin main
             REGISTRY_LOCATION=$(echo "$AI_DOCKER_IMAGE_NAME" | cut -d'/' -f1)
