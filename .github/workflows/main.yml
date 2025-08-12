@@ -17,6 +17,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # --- 🕵️ 디버깅 단계 추가 (1) ---
+    # 체크아웃된 파일들의 전체 구조를 확인합니다. Dockerfile의 위치를 파악하는 데 도움이 됩니다.
+    - name: 1. List files for debugging
+      run: ls -R
+
     - name: Authenticate to Google Cloud
       id: auth
       uses: 'google-github-actions/auth@v2'
@@ -46,13 +51,45 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
           script: |
-            export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
+            # --- 🕵️ 디버깅 단계 추가 (2) ---
+            echo "--- 1. Starting Deployment Script ---"
+            echo "whoami: $(whoami)"
+            echo "pwd: $(pwd)"
             
+            # 환경 변수 설정
+            export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
+
+            # AI 서버 프로젝트 디렉토리로 이동
             cd ~/song_ai
 
+            # --- 🕵️ 디버깅 단계 추가 (3) ---
+            echo "--- 2. Changed to Project Directory ---"
+            echo "pwd: $(pwd)"
+            echo "--- Files in this directory: ---"
+            ls -la
+            echo "---------------------------------"
+
+            # 최신 docker-compose.yml 파일을 git에서 받아옵니다.
+            echo "--- 3. Pulling latest code from Git ---"
             git pull origin main
+            
+            # Artifact Registry 주소만 추출
             REGISTRY_LOCATION=$(echo "$AI_DOCKER_IMAGE_NAME" | cut -d'/' -f1)
+            
+            # Google Cloud에 로그인하여 private registry에 접근
+            echo "--- 4. Configuring Docker with gcloud ---"
             gcloud auth configure-docker "$REGISTRY_LOCATION"
+
+            # 최신 이미지를 받아옵니다.
+            echo "--- 5. Pulling latest Docker image ---"
             docker-compose pull
+
+            # docker-compose로 AI 서비스를 재시작합니다.
+            echo "--- 6. Restarting services with docker-compose ---"
             docker-compose up -d --force-recreate --remove-orphans
+
+            # 불필요한 이전 이미지들을 삭제합니다.
+            echo "--- 7. Pruning old Docker images ---"
             docker image prune -f
+
+            echo "--- ✅ Deployment successful! ---"
