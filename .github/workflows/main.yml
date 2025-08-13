@@ -7,7 +7,6 @@ on:
 
 env:
   IMAGE_NAME: ${{ secrets.AI_DOCKER_IMAGE_NAME }}
-  REGISTRY_HOST: ${{ secrets.AI_DOCKER_IMAGE_NAME && fromJson('["' + secrets.AI_DOCKER_IMAGE_NAME + '"]')[0].split('/')[0] }}
 
 jobs:
   build-and-push-ai:
@@ -27,19 +26,19 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      - name: Extract REGISTRY_HOST (fallback)
-        if: env.REGISTRY_HOST == ''
+      - name: Extract REGISTRY_HOST
         run: |
-          echo "REGISTRY_HOST=$(echo "${{ env.IMAGE_NAME }}" | awk -F/ '{print $1}')" >> $GITHUB_ENV
+          REGISTRY_HOST="$(echo '${{ env.IMAGE_NAME }}' | cut -d'/' -f1)"
+          echo "REGISTRY_HOST=$REGISTRY_HOST" >> "$GITHUB_ENV"
 
-      - name: Check registry reachability (quick probe)
+      - name: Check registry reachability (optional)
         run: |
-          nslookup "${{ env.REGISTRY_HOST }}" || true
-          curl -I --max-time 10 "https://${{ env.REGISTRY_HOST }}/v2/" || true
+          nslookup "$REGISTRY_HOST" || true
+          curl -I --max-time 10 "https://$REGISTRY_HOST/v2/" || true
 
-      - name: Docker login with access token (more robust than helper)
+      - name: Docker login with access token (robust)
         run: |
-          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://${{ env.REGISTRY_HOST }}"
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://$REGISTRY_HOST"
 
       - name: Build image
         run: |
@@ -74,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test SSH port from runner
+      - name: Test SSH port from runner (optional)
         run: nc -vz ${{ secrets.GCP_VM_HOST }} 22
 
       - name: SSH and Deploy to VM
@@ -83,59 +82,40 @@ jobs:
           host: ${{ secrets.GCP_VM_HOST }}
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
-          envs: AR_PULL_KEY_JSON_B64,IMAGE_NAME
           script: |
             set -euo pipefail
-            IMAGE_NAME="${{ secrets.AI_DOCKER_IMAGE_NAME }}"
+            IMAGE_NAME='${{ secrets.AI_DOCKER_IMAGE_NAME }}'
+            REGISTRY_HOST="$(echo "$IMAGE_NAME" | cut -d'/' -f1)"
 
-            # --- (중요) Artifact Registry pull 인증 보장 ---
-            # 방법 1) (권장) SA JSON(base64)로 docker login (Artifact Registry reader 전용 키)
-            # secrets에 AR_PULL_KEY_JSON_B64 추가해 두세요. (json을 base64 인코딩)
-            if ! command -v docker &>/dev/null; then
-              echo "docker not found" >&2; exit 1
-            fi
-
+            # (권장) VM에서 Artifact Registry pull 인증
             if [ -n "${{ secrets.AR_PULL_KEY_JSON_B64 || '' }}" ]; then
               echo "${{ secrets.AR_PULL_KEY_JSON_B64 }}" | base64 -d > /tmp/ar_key.json
-              REGISTRY_HOST="$(echo "$IMAGE_NAME" | awk -F/ '{print $1}')"
               cat /tmp/ar_key.json | docker login -u _json_key --password-stdin "https://$REGISTRY_HOST"
               rm -f /tmp/ar_key.json
             else
-              # 방법 2) VM에 gcloud가 설치되어 있고, 서비스계정 활성화가 되어 있을 때
-              # REGISTRY_HOST 뽑아서 gcloud helper 사용
-              if command -v gcloud &>/dev/null; then
-                REGISTRY_HOST="$(echo "$IMAGE_NAME" | awk -F/ '{print $1}')"
+              if command -v gcloud >/dev/null 2>&1; then
                 gcloud auth configure-docker "$REGISTRY_HOST" -q || true
               fi
             fi
 
-            # --- 배포 ---
             export AI_DOCKER_IMAGE_NAME="$IMAGE_NAME"
 
-            cd ~/song_ai || mkdir -p ~/song_ai && cd ~/song_ai
+            cd ~/song_ai || { mkdir -p ~/song_ai; cd ~/song_ai; }
 
-            # 소스 업데이트 (필요시)
-            if command -v git &>/dev/null; then
-              if [ -d .git ]; then
-                git pull origin main || true
-              fi
+            if command -v git >/dev/null 2>&1; then
+              [ -d .git ] && git pull origin main || true
             fi
 
-            # 최신 이미지 pull & 컨테이너 재기동
-            REGISTRY_HOST="$(echo "$AI_DOCKER_IMAGE_NAME" | awk -F/ '{print $1}')"
             docker pull "${AI_DOCKER_IMAGE_NAME}:latest"
 
-            if command -v docker-compose &>/dev/null; then
+            if command -v docker-compose >/dev/null 2>&1; then
               docker-compose pull
               docker-compose up -d --force-recreate --remove-orphans
+            elif docker compose version >/dev/null 2>&1; then
+              docker compose pull
+              docker compose up -d --force-recreate --remove-orphans
             else
-              # docker compose (plugin) 환경일 경우
-              if docker compose version >/dev/null 2>&1; then
-                docker compose pull
-                docker compose up -d --force-recreate --remove-orphans
-              else
-                echo "docker-compose/compose not found" >&2; exit 1
-              fi
+              echo "docker-compose/compose not found" >&2; exit 1
             fi
 
             docker image prune -f
