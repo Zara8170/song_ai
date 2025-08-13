@@ -5,33 +5,68 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: ${{ secrets.AI_DOCKER_IMAGE_NAME }}
+  REGISTRY_HOST: ${{ secrets.AI_DOCKER_IMAGE_NAME && fromJson('["' + secrets.AI_DOCKER_IMAGE_NAME + '"]')[0].split('/')[0] }}
+
 jobs:
   build-and-push-ai:
     name: Build and Push AI Server Image
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: read
+      id-token: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Authenticate to Google Cloud
-      id: auth
-      uses: 'google-github-actions/auth@v2'
-      with:
-        credentials_json: '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}'
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-    - name: Configure Docker to use Google Cloud credentials
-      run: |
-        REGISTRY_LOCATION=$(echo "${{ secrets.AI_DOCKER_IMAGE_NAME }}" | cut -d'/' -f1)
-        gcloud auth configure-docker "$REGISTRY_LOCATION"
+      - name: Extract REGISTRY_HOST (fallback)
+        if: env.REGISTRY_HOST == ''
+        run: |
+          echo "REGISTRY_HOST=$(echo "${{ env.IMAGE_NAME }}" | awk -F/ '{print $1}')" >> $GITHUB_ENV
 
-    - name: Build and Push Docker image
-      run: |
-        docker build -t ${{ secrets.AI_DOCKER_IMAGE_NAME }}:latest .
-        docker push ${{ secrets.AI_DOCKER_IMAGE_NAME }}:latest
+      - name: Check registry reachability (quick probe)
+        run: |
+          nslookup "${{ env.REGISTRY_HOST }}" || true
+          curl -I --max-time 10 "https://${{ env.REGISTRY_HOST }}/v2/" || true
+
+      - name: Docker login with access token (more robust than helper)
+        run: |
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin "https://${{ env.REGISTRY_HOST }}"
+
+      - name: Build image
+        run: |
+          docker build -t "${{ env.IMAGE_NAME }}:latest" .
+
+      - name: Push image with retries (reduced parallelism)
+        env:
+          DOCKER_CLIENT_TIMEOUT: "600"
+          COMPOSE_HTTP_TIMEOUT: "600"
+        run: |
+          mkdir -p ~/.docker
+          if [ -f ~/.docker/config.json ]; then
+            jq '. + {"maxConcurrentUploads": 1, "experimental": "enabled"}' ~/.docker/config.json > ~/.docker/config.json.tmp || true
+            mv ~/.docker/config.json.tmp ~/.docker/config.json || true
+          else
+            echo '{"maxConcurrentUploads": 1, "experimental": "enabled"}' > ~/.docker/config.json
+          fi
+
+          n=0
+          until [ $n -ge 5 ]; do
+            docker push "${{ env.IMAGE_NAME }}:latest" && exit 0
+            n=$((n+1))
+            echo "push failed. retry $n/5..."
+            sleep $((5*n))
+          done
+          echo "push failed after retries" >&2
+          exit 1
 
   deploy-ai:
     name: Deploy AI Server to GCP VM
@@ -39,20 +74,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Test SSH port from runner
+        run: nc -vz ${{ secrets.GCP_VM_HOST }} 22
+
       - name: SSH and Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.GCP_VM_HOST }}
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
+          envs: AR_PULL_KEY_JSON_B64,IMAGE_NAME
           script: |
-            export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
-            
-            cd ~/song_ai
+            set -euo pipefail
+            IMAGE_NAME="${{ secrets.AI_DOCKER_IMAGE_NAME }}"
 
-            git pull origin main
-            REGISTRY_LOCATION=$(echo "$AI_DOCKER_IMAGE_NAME" | cut -d'/' -f1)
-            gcloud auth configure-docker "$REGISTRY_LOCATION"
-            docker-compose pull
-            docker-compose up -d --force-recreate --remove-orphans
+            # --- (중요) Artifact Registry pull 인증 보장 ---
+            # 방법 1) (권장) SA JSON(base64)로 docker login (Artifact Registry reader 전용 키)
+            # secrets에 AR_PULL_KEY_JSON_B64 추가해 두세요. (json을 base64 인코딩)
+            if ! command -v docker &>/dev/null; then
+              echo "docker not found" >&2; exit 1
+            fi
+
+            if [ -n "${{ secrets.AR_PULL_KEY_JSON_B64 || '' }}" ]; then
+              echo "${{ secrets.AR_PULL_KEY_JSON_B64 }}" | base64 -d > /tmp/ar_key.json
+              REGISTRY_HOST="$(echo "$IMAGE_NAME" | awk -F/ '{print $1}')"
+              cat /tmp/ar_key.json | docker login -u _json_key --password-stdin "https://$REGISTRY_HOST"
+              rm -f /tmp/ar_key.json
+            else
+              # 방법 2) VM에 gcloud가 설치되어 있고, 서비스계정 활성화가 되어 있을 때
+              # REGISTRY_HOST 뽑아서 gcloud helper 사용
+              if command -v gcloud &>/dev/null; then
+                REGISTRY_HOST="$(echo "$IMAGE_NAME" | awk -F/ '{print $1}')"
+                gcloud auth configure-docker "$REGISTRY_HOST" -q || true
+              fi
+            fi
+
+            # --- 배포 ---
+            export AI_DOCKER_IMAGE_NAME="$IMAGE_NAME"
+
+            cd ~/song_ai || mkdir -p ~/song_ai && cd ~/song_ai
+
+            # 소스 업데이트 (필요시)
+            if command -v git &>/dev/null; then
+              if [ -d .git ]; then
+                git pull origin main || true
+              fi
+            fi
+
+            # 최신 이미지 pull & 컨테이너 재기동
+            REGISTRY_HOST="$(echo "$AI_DOCKER_IMAGE_NAME" | awk -F/ '{print $1}')"
+            docker pull "${AI_DOCKER_IMAGE_NAME}:latest"
+
+            if command -v docker-compose &>/dev/null; then
+              docker-compose pull
+              docker-compose up -d --force-recreate --remove-orphans
+            else
+              # docker compose (plugin) 환경일 경우
+              if docker compose version >/dev/null 2>&1; then
+                docker compose pull
+                docker compose up -d --force-recreate --remove-orphans
+              else
+                echo "docker-compose/compose not found" >&2; exit 1
+              fi
+            fi
+
             docker image prune -f
