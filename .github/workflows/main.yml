@@ -39,19 +39,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Decode SSH Key
-        run: |
-          DECODED_KEY=$(echo "${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}" | base64 --decode)
-          echo "DECODED_SSH_KEY<<EOF" >> $GITHUB_ENV
-          echo "$DECODED_KEY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-      
       - name: SSH and Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.GCP_VM_HOST }}
           username: ${{ secrets.GCP_VM_USER }}
-          key: ${{ env.DECODED_SSH_KEY }}
+          key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
           script: |
             export AI_DOCKER_IMAGE_NAME=${{ secrets.AI_DOCKER_IMAGE_NAME }}
             
