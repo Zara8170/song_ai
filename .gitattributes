@@ -1,0 +1,4 @@
+/gradlew text eol=lf
+.github/workflows/* merge=ours
+*.bat text eol=crlf
+*.jar binary
