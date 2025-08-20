@@ -1,11 +1,10 @@
 from collections import defaultdict
 from random import sample
 import re
-from database_service import get_favorite_songs_info, get_candidate_songs
+from database_service import get_favorite_songs_info, get_candidate_songs, get_songs_by_artists
 from ai_service import _analyze_user_preference, _ai_recommend_songs, _make_tagline
 from utils import _get_title_artist
 
-# ====== 정규화/매칭 유틸 ======
 PRIMARY_GENRES = {"J-pop","팝","록","발라드","힙합","인디 팝","일렉트로 팝"}
 MOOD_MAP = {"에너지":"신나는","강렬":"강렬","감성적":"서정적","잔잔":"잔잔"}
 _PAREN_RE = re.compile(r"\s*[\(\[（【].*?[\)\]）】]\s*")
@@ -42,14 +41,12 @@ def _match_ai_recommendations_with_db(ai_recs: list[dict], candidate_songs: list
         ai_artist = ai_rec.get("artist_kr", "").strip()
         found = None
 
-        # 완전 일치
         for db_song in candidate_songs:
             if db_song.get("song_id") in used_ids: 
                 continue
             if ai_title == (db_song.get("title_kr") or "").strip() and ai_artist == (db_song.get("artist_kr") or "").strip():
                 found = db_song
                 break
-        # 유사 일치
         if not found:
             for db_song in candidate_songs:
                 if db_song.get("song_id") in used_ids: 
@@ -67,7 +64,6 @@ def _match_ai_recommendations_with_db(ai_recs: list[dict], candidate_songs: list
             matched_song["reason"] = ai_rec.get("reason", "")
             matched_songs.append(matched_song)
 
-    # 부족분은 match_score 높은 순으로 보충
     if len(matched_songs) < len(ai_recs):
         need = len(ai_recs) - len(matched_songs)
         leftovers = [c for c in candidate_songs if c.get("song_id") not in used_ids]
@@ -178,7 +174,6 @@ def _build_grouped_payload(recs: list[dict], favorite_song_ids: list[int] = None
             if s.get("song_id") in favorite_song_ids:
                 continue
             title_jp, title_kr, title_en, title_yomi, artist, artist_kr = _get_title_artist(s)
-            # 표기 포맷 정리(번호 null 처리 등은 프론트에서 해도 OK)
             norm_songs.append({
                 "title_jp": title_jp,
                 "title_kr": title_kr,
@@ -265,6 +260,22 @@ def recommend_songs(favorite_song_ids: list[int], cached_preference: dict = None
         ai_recommended = candidate_songs[:20]
 
     groups_payload = _build_grouped_payload(ai_recommended, favorite_song_ids, user_preference)
+    
+    # artist 기반 추천 그룹 추가
+    if user_preference:
+        artist_groups = _build_artist_based_groups(
+            user_preference, 
+            exclude_song_ids=favorite_song_ids,
+            per_artist=5,
+            max_artists=2
+        )
+        # artist 그룹을 기존 그룹과 통합
+        for label, group_data in artist_groups.items():
+            groups_payload.append({
+                "label": label,
+                "songs": group_data["songs"],
+                "tagline": group_data["tagline"]
+            })
 
     return {
         "groups": groups_payload,
@@ -272,3 +283,58 @@ def recommend_songs(favorite_song_ids: list[int], cached_preference: dict = None
         "preference": user_preference,
         "favorite_song_ids": favorite_song_ids or []
     }
+
+def _build_artist_based_groups(user_preference: dict, exclude_song_ids: list[int], per_artist:int = 5, max_artists:int = 2) -> dict[str, list[dict]]:
+    """
+    취향분석 결과의 favorite_artists에서 상위 1~2명 선별 → 각 가수의 대표곡 모음 그룹 생성
+    exclude_song_ids: 이미 선택/좋아요 등으로 제외할 곡 ID
+    반환 형식: { "아티스트명 추천": [ {...song...}, ... ], ... }
+    """
+    if not user_preference:
+        return {}
+
+    fav_artists = user_preference.get("favorite_artists") or []
+    if not fav_artists:
+        return {}
+
+    target_artists = [a for a in fav_artists if a][:max_artists]
+    if not target_artists:
+        return {}
+
+    by_artist = get_songs_by_artists(target_artists, limit_per_artist=per_artist, exclude_song_ids=exclude_song_ids)
+    groups: dict[str, list[dict]] = {}
+
+    for artist in target_artists:
+        songs = by_artist.get(artist) or []
+        if not songs:
+            continue
+
+        label = f"{artist} 추천"
+        samples = songs[:3]
+        try:
+            tagline = _make_tagline(artist, samples, user_preference)
+        except Exception:
+            tagline = f"{artist} 인기곡 추천 🎤"
+
+        normalized_songs = []
+        for s in songs:
+            title_jp, title_kr, title_en, title_yomi, artist, artist_kr = _get_title_artist(s)
+            normalized_songs.append({
+                "title_kr": title_kr,
+                "title_en": title_en,
+                "title_jp": title_jp,
+                "title_yomi": title_yomi,
+                "artist": artist,
+                "artist_kr": artist_kr,
+                "genre": s.get("genre") or "",
+                "mood": s.get("mood") or "",
+                "tj_number": s.get("tj_number"),
+                "ky_number": s.get("ky_number")
+            })
+        
+        groups[label] = {
+            "songs": normalized_songs,
+            "tagline": tagline
+        }
+
+    return groups

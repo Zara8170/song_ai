@@ -1,171 +1,188 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 import uvicorn
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 import os, json, redis, atexit
 from datetime import datetime
-from random import sample
 
-from tools import recommend_songs
+# 내부 모듈
+from recommendation_service import recommend_songs
+from database_service import get_favorite_songs_info
+from ai_service import _analyze_user_preference, _make_tagline
 from redis_scheduler import start_scheduler, stop_scheduler
-
 from tasks import task_analyze_preference, task_generate_recommendations, task_warm_active_users
 
+# ==== Env & Redis 설정 ====
 load_dotenv()
 
-REDIS_TTL = 60 * 60 * 24 * 7  # 7일
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_TTL = 60 * 60 * 24 * 7  # 7일 캐시
 
 redis_client = redis.Redis(
-    host=os.getenv("REDIS_HOST"),
-    port=int(os.getenv("REDIS_PORT")),
-    password=os.getenv("REDIS_PASSWORD"), 
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    password=REDIS_PASSWORD,
+    db=REDIS_DB,
     decode_responses=True,
 )
 
-print(redis_client.ping())
+# Redis 연결 체크
+try:
+    redis_client.ping()
+except Exception as e:
+    print(f"[WARN] Redis ping failed: {e}")
 
-app = FastAPI()
+# ==== FastAPI 앱 ====
+app = FastAPI(title="AI Recommendation Server", version="1.1.0")
 
 scheduler = start_scheduler()
 atexit.register(lambda: stop_scheduler(scheduler))
 
+# ==== 캐시 함수 ====
+def save_preference_cache(member_id: str, favorite_song_ids: List[int], preference: dict):
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        payload = {
+            "favorite_song_ids": favorite_song_ids or [],
+            "preference": preference or {},
+            "generated_date": today,
+        }
+        redis_client.setex(f"pref:{member_id}", REDIS_TTL, json.dumps(payload, ensure_ascii=False))
+    except Exception as e:
+        print(f"[CACHE] save_preference_cache error: {e}")
+
+def load_preference_cache(member_id: str) -> Optional[dict]:
+    try:
+        raw = redis_client.get(f"pref:{member_id}")
+        if not raw:
+            return None
+        return json.loads(raw)
+    except Exception as e:
+        print(f"[CACHE] load_preference_cache error: {e}")
+        return None
+
+# ==== 모델 ====
 class RecommendationRequest(BaseModel):
     memberId: str
     favorite_song_ids: List[int] = Field(default_factory=list)
 
     @field_validator("favorite_song_ids", mode="before")
     @classmethod
-    def _cast_str_to_int(cls, v):
-        if isinstance(v, list):
-            return [int(x) for x in v if isinstance(x, (int, str)) and str(x).isdigit()]
-        return v
+    def _normalize_ids(cls, v):
+        if v is None:
+            return []
+        return list(dict.fromkeys(int(x) for x in v))
 
-def check_preference_cache(member_id: str, favorite_song_ids: list[int]) -> tuple[dict, bool]:
-    """preference 캐시 확인 및 즐겨찾기 목록 비교 (하루에 한번만 새로 생성)"""
-    pref_key = f"preference:{member_id}"
-    cached = redis_client.get(pref_key)
-    
-    if not cached:
-        return None, False
-    
-    try:
-        pref_data = json.loads(cached)
-        cached_favorites = pref_data.get("favorite_song_ids", [])
-        generated_date = pref_data.get("generated_date")
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        if generated_date == today:
-            return pref_data.get("preference"), True
-        
-        if set(cached_favorites) == set(favorite_song_ids):
-            return pref_data.get("preference"), True
-        else:
-            redis_client.delete(pref_key)
-            redis_client.delete(f"recommend:{member_id}")
-            return None, False
-    except:
-        return None, False
+class RecommendationResponse(BaseModel):
+    favorite_song_ids: List[int] = Field(default_factory=list)
+    groups: list = Field(default_factory=list)
+    candidates: list = Field(default_factory=list)
+    generated_date: str = ""
 
-def save_preference_cache(member_id: str, favorite_song_ids: list[int], preference: dict):
-    """preference 캐시 저장"""
-    pref_key = f"preference:{member_id}"
-    today = datetime.now().strftime("%Y-%m-%d")
-    pref_data = {
-        "favorite_song_ids": favorite_song_ids,
-        "preference": preference,
-        "generated_date": today
-    }
-    redis_client.setex(pref_key, REDIS_TTL, json.dumps(pref_data, ensure_ascii=False))
+class AnalyzePreferenceRequest(BaseModel):
+    memberId: str
+    favorite_song_ids: List[int] = Field(default_factory=list)
 
-@app.get("/")
-def read_root():
-    return {"message": "AI Song Recommender is running!"}
+class AnalyzePreferenceResponse(BaseModel):
+    preferred_genres: List[str] = Field(default_factory=list)
+    preferred_moods: List[str] = Field(default_factory=list)
+    overall_taste: str = ""
+    favorite_artists: List[str] = Field(default_factory=list)
 
-@app.post("/recommend")
-async def recommend(request: RecommendationRequest):
-    try:
-        memberId = request.memberId
-        favorite_song_ids = request.favorite_song_ids
-        
-        # 1. recommend 캐시 먼저 확인
-        cache_key = f"recommend:{memberId}"
-        cached = redis_client.get(cache_key)
-        if cached:
-            try:
-                data = json.loads(cached)
-                recommend_date = data.get("generated_date")
-                today = datetime.now().strftime("%Y-%m-%d")
-                if recommend_date == today:
-                    candidates = data.get("candidates", [])
-                    random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
-                    return {
-                        "groups": data["recommendations"]["groups"],
-                        "candidates": random_candidates
-                    }
-                else:
-                    redis_client.delete(cache_key)
-            except:
-                redis_client.delete(cache_key)
-        
-        # 2. preference 캐시 확인
-        cached_preference = None
-        if favorite_song_ids:
-            cached_preference, is_cache_valid = check_preference_cache(memberId, favorite_song_ids)
-        
-        # 3. 새로운 추천 생성
-        if cached_preference:
-            result = recommend_songs(favorite_song_ids, cached_preference)
-        else:
-            result = recommend_songs(favorite_song_ids)
-            if "preference" in result and favorite_song_ids:
-                save_preference_cache(memberId, favorite_song_ids, result["preference"])
-                # ⬇️ 비동기 태스크도 큐잉(워밍)
-                task_analyze_preference.delay(memberId, favorite_song_ids)
-                task_generate_recommendations.delay(memberId, favorite_song_ids)
-        
-        if "error" in result:
-            raise HTTPException(status_code=500, detail=result["error"])
+class SongLite(BaseModel):
+    title_kr: Optional[str] = ""
+    title_en: Optional[str] = ""
+    title_jp: Optional[str] = ""
+    artist_kr: Optional[str] = ""
+    artist: Optional[str] = ""
 
-        # 4. recommend 캐시 저장
-        today = datetime.now().strftime("%Y-%m-%d")
-        payload = {
-            "favorites": favorite_song_ids, 
-            "recommendations": {"groups": result["groups"]},
-            "candidates": result["candidates"],
-            "generated_date": today
-        }
-        redis_client.setex(cache_key, REDIS_TTL, json.dumps(payload, ensure_ascii=False))
-        
-        # 5. 응답 반환
-        candidates = result["candidates"]
-        random_candidates = sample(candidates, min(12, len(candidates))) if len(candidates) > 0 else []
-        
-        return {
-            "groups": result["groups"],
-            "candidates": random_candidates
-        }
+class GenerateTaglineRequest(BaseModel):
+    label: str = Field(..., description="그룹 라벨 (예: '서정적', 'J-pop')")
+    songs: List[SongLite] = Field(default_factory=list)
+    user_preference: Optional[AnalyzePreferenceResponse] = None
 
-    except Exception as e:
-        print(f"An error occurred during recommendation: {e}")
-        raise HTTPException(status_code=500, detail=f"Recommendation error: {e}")
+class GenerateTaglineResponse(BaseModel):
+    label: str
+    tagline: str
 
-# 좋아요 변경시 비동기 큐잉(선택)
 class FavoriteUpdate(BaseModel):
     memberId: str
     favorite_song_ids: List[int] = Field(default_factory=list)
 
+# ==== API 엔드포인트 ====
+@app.post("/recommend", response_model=RecommendationResponse)
+async def recommend(req: RecommendationRequest):
+    try:
+        result = recommend_songs(req.favorite_song_ids)
+        today = datetime.now().strftime("%Y-%m-%d")
+        payload = RecommendationResponse(
+            favorite_song_ids=result.get("favorite_song_ids", []),
+            groups=result.get("groups", []),
+            candidates=result.get("candidates", []),
+            generated_date=today,
+        )
+        try:
+            redis_client.setex(f"recommend:{req.memberId}", REDIS_TTL, payload.model_dump_json())
+        except Exception as ce:
+            print(f"[CACHE] recommend cache error: {ce}")
+        return payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Recommend error: {e}")
+
+@app.post("/preference/analyze", response_model=AnalyzePreferenceResponse)
+async def analyze_preference_api(req: AnalyzePreferenceRequest):
+    try:
+        if not req.favorite_song_ids:
+            raise HTTPException(status_code=400, detail="favorite_song_ids가 비어 있습니다.")
+        fav_songs = get_favorite_songs_info(req.favorite_song_ids)
+        pref = _analyze_user_preference(fav_songs)
+        if not pref or not isinstance(pref, dict):
+            raise HTTPException(status_code=500, detail="취향분석 실패")
+        save_preference_cache(req.memberId, req.favorite_song_ids, pref)
+        return AnalyzePreferenceResponse(**pref)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Preference analyze error: {e}")
+
+@app.post("/tagline/generate", response_model=GenerateTaglineResponse)
+async def generate_tagline_api(req: GenerateTaglineRequest):
+    try:
+        if not req.label:
+            raise HTTPException(status_code=400, detail="label은 필수입니다.")
+        songs_payload = [s.model_dump() for s in req.songs]
+        upref = req.user_preference.model_dump() if req.user_preference else None
+        tagline = _make_tagline(req.label, songs_payload, upref)
+        if not tagline or not isinstance(tagline, str):
+            raise HTTPException(status_code=500, detail="태그라인 생성 실패")
+        return GenerateTaglineResponse(label=req.label, tagline=tagline)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Tagline generate error: {e}")
+
 @app.post("/favorites/updated")
 async def favorites_updated(req: FavoriteUpdate):
-    task_analyze_preference.delay(req.memberId, req.favorite_song_ids)
-    task_generate_recommendations.delay(req.memberId, req.favorite_song_ids)
-    return {"status": "queued"}
+    try:
+        task_analyze_preference.delay(req.memberId, req.favorite_song_ids)
+        task_generate_recommendations.delay(req.memberId, req.favorite_song_ids)
+        return {"status": "queued"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Queue error: {e}")
 
-# 활성 유저 워밍(선택)
 @app.post("/warm/active")
 async def warm_active(limit: int = 500):
-    task = task_warm_active_users.delay(limit)
-    return {"task_id": task.id, "status": "queued"}
+    try:
+        task = task_warm_active_users.delay(limit)
+        return {"task_id": task.id, "status": "queued"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Warm queue error: {e}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")))

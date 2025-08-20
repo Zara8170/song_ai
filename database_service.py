@@ -1,7 +1,7 @@
 import os
 import pymysql
 from dotenv import load_dotenv
-from typing import Optional
+from typing import List, Dict, Any, Optional
 
 load_dotenv()
 
@@ -160,6 +160,81 @@ def get_all_active_users_with_favorites() -> dict[str, list[int]]:
         return user_favs
     except Exception as e:
         print(f"[DB] 사용자 조회 실패: {e}")
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+def get_songs_by_artists(artists: List[str], limit_per_artist: int = 5, exclude_song_ids: Optional[List[int]] = None) -> Dict[str, List[dict]]:
+    """
+    artists에 들어있는 가수명(한글/원문)을 기준으로 각 가수별로 곡을 최대 limit_per_artist개씩 반환.
+    - artist_kr, artist 둘 다 매칭 시도 (OR)
+    - exclude_song_ids에 있는 곡은 제외
+    반환: { "아티스트명": [ {song row dict...}, ... ] }
+    """
+    if not artists:
+        return {}
+
+    conn = get_db_connection()
+    cur = conn.cursor(pymysql.cursors.DictCursor)
+    try:
+        results: Dict[str, List[dict]] = {}
+        exclude_song_ids = exclude_song_ids or []
+
+        for name in artists:
+            rows: List[dict] = []
+
+            cur.execute(
+                """
+                SELECT s.song_id, s.title_kr, s.title_en, s.title_jp, s.title_yomi,
+                       s.artist_kr, s.artist, s.genre, s.mood,
+                       s.tj_number, s.ky_number
+                FROM song s
+                WHERE (s.artist_kr = %s OR s.artist = %s)
+                {ex}
+                ORDER BY s.popularity DESC, s.song_id DESC
+                LIMIT %s
+                """.format(
+                    ex="AND s.song_id NOT IN ({})".format(
+                        ",".join(["%s"] * len(exclude_song_ids))
+                    ) if exclude_song_ids else ""
+                ),
+                tuple(([name, name] + exclude_song_ids + [limit_per_artist]) if exclude_song_ids else (name, name, limit_per_artist)),
+            )
+            rows = cur.fetchall()
+
+            if len(rows) < limit_per_artist:
+                remain = limit_per_artist - len(rows)
+                like_pat = f"%{name}%"
+                cur.execute(
+                    """
+                    SELECT s.song_id, s.title_kr, s.title_en, s.title_jp, s.title_yomi,
+                           s.artist_kr, s.artist, s.genre, s.mood,
+                           s.tj_number, s.ky_number
+                    FROM song s
+                    WHERE (s.artist_kr LIKE %s OR s.artist LIKE %s)
+                    {ex}
+                    ORDER BY s.popularity DESC, s.song_id DESC
+                    LIMIT %s
+                    """.format(
+                        ex="AND s.song_id NOT IN ({})".format(
+                            ",".join(["%s"] * len(exclude_song_ids))
+                        ) if exclude_song_ids else ""
+                    ),
+                    tuple(([like_pat, like_pat] + exclude_song_ids + [remain]) if exclude_song_ids else (like_pat, like_pat, remain)),
+                )
+                like_rows = cur.fetchall()
+
+                seen = {r["song_id"] for r in rows}
+                for r in like_rows:
+                    if r["song_id"] not in seen:
+                        rows.append(r)
+                        seen.add(r["song_id"])
+
+            results[name] = rows
+        return results
+    except Exception as e:
+        print(f"[DB] get_songs_by_artists error: {e}")
         return {}
     finally:
         cur.close()
