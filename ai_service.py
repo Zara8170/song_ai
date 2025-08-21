@@ -10,7 +10,8 @@ def _get_title_artist_for_tagline(song: dict) -> tuple[str, str]:
     title_kr = song.get("title_kr", "")
     title_en = song.get("title_en", "")
     title_jp = song.get("title_jp", "")
-    title = title_kr.strip() or title_en.strip() or title_jp.strip() or "Unknown Title"
+    title_yomi = song.get("title_yomi", "")
+    title = title_kr.strip() or title_en.strip() or title_jp.strip() or title_yomi.strip() or "Unknown Title"
     artist_kr = song.get("artist_kr", "")
     artist = song.get("artist", "")
     artist_name = artist_kr.strip() or artist.strip() or "Unknown Artist"

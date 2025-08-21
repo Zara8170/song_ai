@@ -261,7 +261,6 @@ def recommend_songs(favorite_song_ids: list[int], cached_preference: dict = None
 
     groups_payload = _build_grouped_payload(ai_recommended, favorite_song_ids, user_preference)
     
-    # artist 기반 추천 그룹 추가
     if user_preference:
         artist_groups = _build_artist_based_groups(
             user_preference, 
@@ -269,7 +268,6 @@ def recommend_songs(favorite_song_ids: list[int], cached_preference: dict = None
             per_artist=5,
             max_artists=2
         )
-        # artist 그룹을 기존 그룹과 통합
         for label, group_data in artist_groups.items():
             groups_payload.append({
                 "label": label,
