@@ -1,10 +1,10 @@
 import json
 from random import sample
 from langchain_openai import ChatOpenAI
-from config import OPENAI_API_KEY
-from prompts import RECOMMEND_PROMPT, ANALYZE_PREFERENCE_PROMPT
+from config.settings import OPENAI_API_KEY
+from config.prompts import RECOMMEND_PROMPT, ANALYZE_PREFERENCE_PROMPT
 from pydantic import ValidationError
-from models import UserPreference, RecommendationResponse
+from models.data_models import UserPreference, RecommendationResponse
 
 def _get_title_artist_for_tagline(song: dict) -> tuple[str, str]:
     title_kr = song.get("title_kr", "")
@@ -90,7 +90,7 @@ def _ai_recommend_songs(candidate_songs: list[dict], user_preference: dict, targ
         return sample(candidate_songs, min(target_count, len(candidate_songs)))
 
 def _make_tagline(label: str, songs: list[dict], user_preference: dict = None) -> str:
-    from prompts import GROUP_TAGLINE_PROMPT
+    from config.prompts import GROUP_TAGLINE_PROMPT
     from random import sample as rsample
     reps = rsample(songs, k=min(3, len(songs)))
     sample_txt = " / ".join(

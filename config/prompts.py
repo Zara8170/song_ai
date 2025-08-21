@@ -85,4 +85,3 @@ GROUP_TAGLINE_PROMPT = PromptTemplate.from_template(
 - 신나는 BTS 히트곡 🎤
 """
 )
-

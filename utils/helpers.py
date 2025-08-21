@@ -6,4 +6,4 @@ def _get_title_artist(song: dict) -> tuple[str, str, str, str, str, str]:
     title_yomi = song.get("title_yomi", "")
     artist = song.get("artist", "")
     artist_kr = song.get("artist_kr", "")
-    return title_jp.strip(), title_kr.strip(), title_en.strip(), title_yomi.strip(), artist.strip(), artist_kr.strip() 
+    return title_jp.strip(), title_kr.strip(), title_en.strip(), title_yomi.strip(), artist.strip(), artist_kr.strip()
