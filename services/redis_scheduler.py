@@ -7,8 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import timezone
 from dotenv import load_dotenv
-from recommendation_service import recommend_songs
-from database_service import get_all_active_users_with_favorites
+from services.database_service import get_all_active_users_with_favorites
 
 load_dotenv()
 
@@ -73,6 +72,8 @@ def regenerate_all_recommendations():
                     except:
                         pass
                 
+                # 지연 import로 순환 import 방지
+                from core.recommendation_service import recommend_songs
                 result = recommend_songs(favorite_song_ids, cached_preference)
                 
                 if "error" not in result:
@@ -202,4 +203,4 @@ def test_user_fetch():
 
 if __name__ == "__main__":
     # 직접 실행 시 테스트
-    test_user_fetch() 
+    test_user_fetch()

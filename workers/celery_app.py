@@ -14,8 +14,8 @@ def _build_redis_url() -> str:
     if url:
         return url
 
-    host = os.getenv("REDIS_HOST")
-    port = os.getenv("REDIS_PORT")
+    host = os.getenv("REDIS_HOST", "localhost")
+    port = os.getenv("REDIS_PORT", "6379")
     password = os.getenv("REDIS_PASSWORD")
     db = os.getenv("REDIS_DB", "0")
     scheme = "rediss" if os.getenv("REDIS_USE_SSL", "false").lower() == "true" else "redis"
@@ -29,7 +29,7 @@ celery = Celery(
     "reco",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks"],
+    include=["workers.tasks"],
 )
 
 # 기본/이벤트 설정

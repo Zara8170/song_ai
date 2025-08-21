@@ -1,9 +1,9 @@
 from collections import defaultdict
 from random import sample
 import re
-from database_service import get_favorite_songs_info, get_candidate_songs, get_songs_by_artists
-from ai_service import _analyze_user_preference, _ai_recommend_songs, _make_tagline
-from utils import _get_title_artist
+from services.database_service import get_favorite_songs_info, get_candidate_songs, get_songs_by_artists
+from services.ai_service import _analyze_user_preference, _ai_recommend_songs, _make_tagline
+from utils.helpers import _get_title_artist
 
 PRIMARY_GENRES = {"J-pop","팝","록","발라드","힙합","인디 팝","일렉트로 팝"}
 MOOD_MAP = {"에너지":"신나는","강렬":"강렬","감성적":"서정적","잔잔":"잔잔"}

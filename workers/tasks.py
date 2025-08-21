@@ -1,9 +1,9 @@
 import json, os, redis
 from datetime import datetime
-from celery_app import celery
-from recommendation_service import recommend_songs
-from database_service import get_all_active_users_with_favorites, get_favorite_songs_info
-from ai_service import _analyze_user_preference
+from workers.celery_app import celery
+from core.recommendation_service import recommend_songs
+from services.database_service import get_all_active_users_with_favorites, get_favorite_songs_info
+from services.ai_service import _analyze_user_preference
 
 redis_client = redis.Redis(
     host=os.getenv("REDIS_HOST"),
@@ -17,8 +17,8 @@ REDIS_TTL = 60 * 60 * 24 * 7
 def _cache_recommendations(member_id: str, favorite_song_ids: list[int], result: dict):
     today = datetime.now().strftime("%Y-%m-%d")
     payload = {
-        "favorites": result.get("favorite_song_ids", []),
-        "recommendations": {"groups": result.get("groups", [])},
+        "favorite_song_ids": result.get("favorite_song_ids", []),
+        "groups": result.get("groups", []),
         "candidates": result.get("candidates", []),
         "generated_date": today,
     }
@@ -32,7 +32,7 @@ def task_analyze_preference(self, member_id: str, favorite_song_ids: list[int]):
     pref = _analyze_user_preference(fav_songs)
     if pref:
         try:
-            from main import save_preference_cache
+            from services.cache_service import save_preference_cache
             save_preference_cache(member_id, favorite_song_ids, pref)
         except Exception:
             pass
