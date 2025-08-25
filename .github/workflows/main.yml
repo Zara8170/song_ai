@@ -90,7 +90,7 @@ jobs:
 
             has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
-            # Artifact Registry pull auth (키 제공 시 키 사용, 아니면 gcloud)
+            # --- Artifact Registry pull auth ---
             if [ -n "${{ secrets.AR_PULL_KEY_JSON_B64 || '' }}" ]; then
               echo "${{ secrets.AR_PULL_KEY_JSON_B64 }}" | base64 -d > /tmp/ar_key.json
               docker login -u _json_key --password-stdin "https://$REGISTRY_HOST" < /tmp/ar_key.json
@@ -101,7 +101,18 @@ jobs:
               fi
             fi
 
-            # compose 바이너리 선택 (docker compose 우선)
+            export AI_DOCKER_IMAGE_NAME="$IMAGE_NAME"
+
+            # --- App dir & code sync ---
+            cd ~/song_ai || { mkdir -p ~/song_ai; cd ~/song_ai; }
+            if has_cmd git; then
+              [ -d .git ] && git pull origin main || true
+            fi
+
+            # --- Pull the latest image (best-effort) ---
+            docker pull "${AI_DOCKER_IMAGE_NAME}:latest" || true
+
+            # --- Cleanly restart with compose ---
             if docker compose version >/dev/null 2>&1; then
               COMPOSE="docker compose"
             elif has_cmd docker-compose; then
@@ -111,36 +122,8 @@ jobs:
               exit 1
             fi
 
-            export AI_DOCKER_IMAGE_NAME="$IMAGE_NAME"
-
-            # 작업 디렉토리 및 코드 동기화
-            cd ~/song_ai || { mkdir -p ~/song_ai; cd ~/song_ai; }
-            if has_cmd git; then
-              [ -d .git ] && git pull origin main || true
-            fi
-
-            # 최신 이미지 pull (실패 무시)
-            docker pull "${AI_DOCKER_IMAGE_NAME}:latest" || true
-
-            # 깨끗하게 내리기
             $COMPOSE down --remove-orphans || true
-
-            # (이름 충돌 예방) 잔존 컨테이너 정리 — 필요 시 목록 조정
-            for NAME in song_ai-redis-1 redis redisinsight worker api flower; do
-              CID="$(docker ps -a --format '{{.ID}} {{.Names}}' | awk -v n="$NAME" '$2==n {print $1}')"
-              if [ -n "$CID" ]; then
-                docker rm -f "$CID" || true
-              fi
-            done
-
-            # 의존 이미지 pull 및 재기동
             $COMPOSE pull || true
             $COMPOSE up -d --force-recreate --remove-orphans
 
-            # 이미지 청소
             docker image prune -f || true
-
-            # (디버그용)
-            # docker ps
-            # docker info | grep -Ei 'rootless|server version|cgroup' || true
-            # docker context ls || true

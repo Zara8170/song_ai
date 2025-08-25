@@ -1,6 +1,7 @@
+name: song_ai
+
 services:
   api:
-    # build: .
     image: ${AI_DOCKER_IMAGE_NAME}:latest
     env_file: .env
     depends_on:
@@ -73,6 +74,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
 
   redisinsight:
     image: redis/redisinsight:latest
