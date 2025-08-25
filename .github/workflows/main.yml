@@ -88,23 +88,24 @@ jobs:
             IMAGE_NAME='${{ secrets.AI_DOCKER_IMAGE_NAME }}'
             REGISTRY_HOST="$(echo "$IMAGE_NAME" | cut -d'/' -f1)"
 
-            # (1) Artifact Registry pull auth: 키 제공 시 키, 없으면 gcloud
+            has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+            # Artifact Registry pull auth (키 제공 시 키 사용, 아니면 gcloud)
             if [ -n "${{ secrets.AR_PULL_KEY_JSON_B64 || '' }}" ]; then
               echo "${{ secrets.AR_PULL_KEY_JSON_B64 }}" | base64 -d > /tmp/ar_key.json
-              cat /tmp/ar_key.json | sudo docker login -u _json_key --password-stdin "https://$REGISTRY_HOST"
+              docker login -u _json_key --password-stdin "https://$REGISTRY_HOST" < /tmp/ar_key.json
               rm -f /tmp/ar_key.json
             else
-              if command -v gcloud >/dev/null 2>&1; then
+              if has_cmd gcloud; then
                 gcloud auth configure-docker "$REGISTRY_HOST" -q || true
               fi
             fi
 
-            # (2) 항상 sudo docker/compose 사용
-            DOCKER="sudo docker"
-            if $DOCKER compose version >/dev/null 2>&1; then
-              COMPOSE="$DOCKER compose"
-            elif command -v docker-compose >/dev/null 2>&1; then
-              COMPOSE="sudo docker-compose"
+            # compose 바이너리 선택 (docker compose 우선)
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            elif has_cmd docker-compose; then
+              COMPOSE="docker-compose"
             else
               echo "docker compose/docker-compose not found" >&2
               exit 1
@@ -112,42 +113,34 @@ jobs:
 
             export AI_DOCKER_IMAGE_NAME="$IMAGE_NAME"
 
-            # (3) 작업 디렉토리 및 코드 동기화
+            # 작업 디렉토리 및 코드 동기화
             cd ~/song_ai || { mkdir -p ~/song_ai; cd ~/song_ai; }
-            if command -v git >/dev/null 2>&1; then
+            if has_cmd git; then
               [ -d .git ] && git pull origin main || true
             fi
 
-            # (4) 최신 이미지 pull (실패 무시)
-            $DOCKER pull "${AI_DOCKER_IMAGE_NAME}:latest" || true
+            # 최신 이미지 pull (실패 무시)
+            docker pull "${AI_DOCKER_IMAGE_NAME}:latest" || true
 
-            # (5) 충돌 방지: 먼저 내려주고
+            # 깨끗하게 내리기
             $COMPOSE down --remove-orphans || true
 
-            # (6) 이름 충돌 가능성이 있는 컨테이너 강제 제거
-            #    환경에 맞춰 목록을 조정해도 됩니다.
+            # (이름 충돌 예방) 잔존 컨테이너 정리 — 필요 시 목록 조정
             for NAME in song_ai-redis-1 redis redisinsight worker api flower; do
-              ID="$($DOCKER ps -a --format '{{.ID}} {{.Names}}' | awk -v n="$NAME" '$2==n {print $1}')"
-              if [ -n "$ID" ]; then
-                $DOCKER rm -f "$ID" || true
+              CID="$(docker ps -a --format '{{.ID}} {{.Names}}' | awk -v n="$NAME" '$2==n {print $1}')"
+              if [ -n "$CID" ]; then
+                docker rm -f "$CID" || true
               fi
             done
 
-            # (선택) 완전 초기화가 필요할 때만 주석 해제 (주의: 전체 컨테이너/네트워크/볼륨 정리)
-            # $DOCKER ps -aq | xargs -r $DOCKER rm -f || true
-            # $DOCKER network prune -f || true
-            # $DOCKER volume prune -f || true
-
-            # (7) compose pull (의존 이미지 포함)
+            # 의존 이미지 pull 및 재기동
             $COMPOSE pull || true
-
-            # (8) 재기동
             $COMPOSE up -d --force-recreate --remove-orphans
 
-            # (9) 이미지 청소
-            $DOCKER image prune -f || true
+            # 이미지 청소
+            docker image prune -f || true
 
-            # (진단 필요 시 주석 해제)
-            # $DOCKER ps
-            # $DOCKER info | grep -Ei 'rootless|server version|cgroup' || true
-            # $DOCKER context ls || true
+            # (디버그용)
+            # docker ps
+            # docker info | grep -Ei 'rootless|server version|cgroup' || true
+            # docker context ls || true
