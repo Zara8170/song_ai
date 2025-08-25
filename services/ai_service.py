@@ -116,6 +116,13 @@ def _make_tagline(label: str, songs: list[dict], user_preference: dict = None) -
             sample_songs=sample_txt
         )
         response = llm.invoke(prompt_text).content.strip()
-        return response.strip('"').strip("'").strip()
+        
+        tagline = response.strip('"').strip("'").strip()
+        if '\n' in tagline:
+            tagline = tagline.split('\n')[0].strip()
+        
+        tagline = tagline.lstrip('- ').lstrip('• ').lstrip('* ').strip()
+        
+        return tagline if tagline else f"{label}의 매력적인 선곡 🎵"
     except Exception:
         return f"{label}의 매력적인 선곡 🎵"
