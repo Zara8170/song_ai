@@ -2,7 +2,7 @@ name: CI/CD for AI Server
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 env:
@@ -84,10 +84,10 @@ jobs:
           key: ${{ secrets.GCP_VM_SSH_PRIVATE_KEY }}
           script: |
             set -euo pipefail
+
             IMAGE_NAME='${{ secrets.AI_DOCKER_IMAGE_NAME }}'
             REGISTRY_HOST="$(echo "$IMAGE_NAME" | cut -d'/' -f1)"
 
-            # (권장) VM에서 Artifact Registry pull 인증
             if [ -n "${{ secrets.AR_PULL_KEY_JSON_B64 || '' }}" ]; then
               echo "${{ secrets.AR_PULL_KEY_JSON_B64 }}" | base64 -d > /tmp/ar_key.json
               cat /tmp/ar_key.json | docker login -u _json_key --password-stdin "https://$REGISTRY_HOST"
@@ -98,24 +98,48 @@ jobs:
               fi
             fi
 
+            DOCKER="docker"
+            if sudo -n true 2>/dev/null; then
+              DOCKER="sudo docker"
+            fi
+
+            if $DOCKER compose version >/dev/null 2>&1; then
+              COMPOSE="$DOCKER compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              if sudo -n true 2>/dev/null; then
+                COMPOSE="sudo docker-compose"
+              else
+                COMPOSE="docker-compose"
+              fi
+            else
+              echo "docker compose/docker-compose not found" >&2
+              exit 1
+            fi
+
             export AI_DOCKER_IMAGE_NAME="$IMAGE_NAME"
 
             cd ~/song_ai || { mkdir -p ~/song_ai; cd ~/song_ai; }
-
             if command -v git >/dev/null 2>&1; then
               [ -d .git ] && git pull origin main || true
             fi
 
-            docker pull "${AI_DOCKER_IMAGE_NAME}:latest"
+            $DOCKER pull "${AI_DOCKER_IMAGE_NAME}:latest" || true
 
-            if command -v docker-compose >/dev/null 2>&1; then
-              docker-compose pull
-              docker-compose up -d --force-recreate --remove-orphans
-            elif docker compose version >/dev/null 2>&1; then
-              docker compose pull
-              docker compose up -d --force-recreate --remove-orphans
-            else
-              echo "docker-compose/compose not found" >&2; exit 1
-            fi
+            $COMPOSE down --remove-orphans || true
 
-            docker image prune -f
+            for NAME in song_ai-redis-1 redis redisinsight worker api flower; do
+              ID="$($DOCKER ps -a --format '{{.ID}} {{.Names}}' | awk -v n="$NAME" '$2==n {print $1}')"
+              if [ -n "$ID" ]; then
+                $DOCKER rm -f "$ID" || true
+              fi
+            done
+
+            $COMPOSE pull || true
+
+            $COMPOSE up -d --force-recreate --remove-orphans
+
+            $DOCKER image prune -f || true
+
+            # $DOCKER ps
+            # $DOCKER info | grep -Ei 'rootless|server version|cgroup' || true
+            # $DOCKER context ls || true
