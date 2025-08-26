@@ -22,7 +22,7 @@ def _analyze_user_preference(favorite_songs: list[dict]) -> dict:
         return None
 
     favorites_text = "\n".join([
-        f"- {song.get('title_kr', 'Unknown')} by {song.get('artist_kr', 'Unknown')} "
+        f"- {song.get('title_kr', 'Unknown')}/{song.get('title_en', '')}/{song.get('title_yomi', '')} by {song.get('artist_kr', 'Unknown')}/{song.get('artist', '')} "
         f"(장르: {song.get('genre', 'Unknown')}, 분위기: {song.get('mood', 'Unknown')})"
         for song in favorite_songs
     ])
@@ -55,7 +55,7 @@ def _ai_recommend_songs(candidate_songs: list[dict], user_preference: dict, targ
         return []
 
     song_list_text = "\n".join([
-        f"{i+1}.{song.get('title_kr', 'Unknown')}-{song.get('artist_kr', 'Unknown')}({song.get('genre', 'Unknown')},{song.get('mood', 'Unknown')})"
+        f"{i+1}.{song.get('title_kr', 'Unknown')}/{song.get('title_en', '')}/{song.get('title_yomi', '')}-{song.get('artist_kr', 'Unknown')}/{song.get('artist', '')}({song.get('genre', 'Unknown')},{song.get('mood', 'Unknown')})"
         for i, song in enumerate(candidate_songs)
     ])
 

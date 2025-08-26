@@ -35,7 +35,7 @@ RECOMMEND_PROMPT = PromptTemplate.from_template(
 - 오직 제공된 곡목록에서만 선택하세요. 새로운 곡 생성 금지.
 - 반드시 JSON만 출력. 문자열 설명/마크다운 금지.
 - genre/mood는 아래 허용 목록만 사용.
-- title, artist_kr는 곡목록과 동일한 표기를 그대로 사용.
+- title, title_kr, title_en, title_yomi, artist, artist_kr는 곡목록과 동일한 표기를 그대로 사용.
 
 취향 요약:
 {user_preference}
@@ -50,7 +50,18 @@ RECOMMEND_PROMPT = PromptTemplate.from_template(
 아웃풋 스키마:
 {{
   "recommended_songs": [
-    {{"title": "string", "artist_kr": "string", "tj_number": 0, "ky_number": 0, "mood": "string", "genre": "string"}}
+    {{
+      "title": "string", 
+      "title_kr": "string", 
+      "title_en": "string", 
+      "title_yomi": "string", 
+      "artist": "string", 
+      "artist_kr": "string", 
+      "tj_number": 0, 
+      "ky_number": 0, 
+      "mood": "string", 
+      "genre": "string"
+    }}
   ]
 }}
 """

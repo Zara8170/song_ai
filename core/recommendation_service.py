@@ -37,22 +37,44 @@ def _match_ai_recommendations_with_db(ai_recs: list[dict], candidate_songs: list
     used_ids = set()
 
     for ai_rec in ai_recs:
-        ai_title = ai_rec.get("title", "").strip()
+        ai_title = ai_rec.get("title", "").strip() or ai_rec.get("title_kr", "").strip()
         ai_artist = ai_rec.get("artist_kr", "").strip()
         found = None
 
         for db_song in candidate_songs:
             if db_song.get("song_id") in used_ids: 
                 continue
-            if ai_title == (db_song.get("title_kr") or "").strip() and ai_artist == (db_song.get("artist_kr") or "").strip():
+            db_titles = [
+                db_song.get("title_kr", "").strip(),
+                db_song.get("title_en", "").strip(),
+                db_song.get("title_jp", "").strip(),
+                db_song.get("title_yomi", "").strip()
+            ]
+            db_artists = [
+                db_song.get("artist_kr", "").strip(),
+                db_song.get("artist", "").strip()
+            ]
+            
+            if ai_title in db_titles and ai_artist in db_artists:
                 found = db_song
                 break
+                
         if not found:
             for db_song in candidate_songs:
                 if db_song.get("song_id") in used_ids: 
                     continue
-                if _soft_match(ai_rec.get("title",""), db_song.get("title_kr","")) and \
-                   _soft_match(ai_rec.get("artist_kr",""), db_song.get("artist_kr","")):
+                title_match = any(_soft_match(ai_title, db_title) for db_title in [
+                    db_song.get("title_kr", ""),
+                    db_song.get("title_en", ""),
+                    db_song.get("title_jp", ""),
+                    db_song.get("title_yomi", "")
+                ])
+                artist_match = any(_soft_match(ai_artist, db_artist) for db_artist in [
+                    db_song.get("artist_kr", ""),
+                    db_song.get("artist", "")
+                ])
+                
+                if title_match and artist_match:
                     found = db_song
                     break
 

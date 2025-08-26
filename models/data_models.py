@@ -9,9 +9,15 @@ class UserPreference(BaseModel):
 
 class RecommendedSong(BaseModel):
     title: str
+    title_kr: Optional[str] = ""
+    title_en: Optional[str] = ""
+    title_yomi: Optional[str] = ""
+    artist: Optional[str] = ""
     artist_kr: str
     mood: Optional[str] = ""
     genre: Optional[str] = ""
+    tj_number: Optional[int] = None
+    ky_number: Optional[int] = None
     reason: Optional[str] = ""
 
 class RecommendationResponse(BaseModel):
