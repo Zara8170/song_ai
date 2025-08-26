@@ -36,7 +36,12 @@ def _analyze_user_preference(favorite_songs: list[dict]) -> dict:
 
     analyze_chain = ANALYZE_PREFERENCE_PROMPT | llm
     try:
-        response = analyze_chain.invoke({"favorites": favorites_text}).content.strip()
+        response = analyze_chain.invoke({"favorites": favorites_text})
+        
+        if not response or not response.content:
+            return None
+            
+        response = response.content.strip()
         if "```" in response:
             response = response.split("```")[1]
         result = json.loads(response)
@@ -80,7 +85,12 @@ def _ai_recommend_songs(candidate_songs: list[dict], user_preference: dict, targ
             "target_count": target_count,
             "allowed_genres": ", ".join(allowed_genres),
             "allowed_moods": ", ".join(allowed_moods),
-        }).content.strip()
+        })
+        
+        if not response or not response.content:
+            return sample(candidate_songs, min(target_count, len(candidate_songs)))
+            
+        response = response.content.strip()
         if "```" in response:
             response = response.split("```")[1]
         result = json.loads(response)

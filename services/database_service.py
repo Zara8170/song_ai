@@ -192,7 +192,7 @@ def get_songs_by_artists(artists: List[str], limit_per_artist: int = 5, exclude_
                 FROM song s
                 WHERE (s.artist_kr = %s OR s.artist = %s)
                 {ex}
-                ORDER BY s.popularity DESC, s.song_id DESC
+                ORDER BY s.song_id DESC
                 LIMIT %s
                 """.format(
                     ex="AND s.song_id NOT IN ({})".format(
@@ -214,7 +214,7 @@ def get_songs_by_artists(artists: List[str], limit_per_artist: int = 5, exclude_
                     FROM song s
                     WHERE (s.artist_kr LIKE %s OR s.artist LIKE %s)
                     {ex}
-                    ORDER BY s.popularity DESC, s.song_id DESC
+                    ORDER BY s.song_id DESC
                     LIMIT %s
                     """.format(
                         ex="AND s.song_id NOT IN ({})".format(

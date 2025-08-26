@@ -11,11 +11,9 @@ from services.database_service import get_all_active_users_with_favorites
 
 load_dotenv()
 
-# 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Redis 클라이언트 설정
 redis_client = redis.Redis(
     host=os.getenv("REDIS_HOST"),
     port=int(os.getenv("REDIS_PORT")),
@@ -72,7 +70,6 @@ def regenerate_all_recommendations():
                     except:
                         pass
                 
-                # 지연 import로 순환 import 방지
                 from core.recommendation_service import recommend_songs
                 result = recommend_songs(favorite_song_ids, cached_preference)
                 
@@ -154,10 +151,9 @@ def start_scheduler():
     """
     scheduler = BackgroundScheduler(timezone=timezone("Asia/Seoul"))
     
-    # 매일 새벽 3시에 캐시 삭제 및 재생성 작업 스케줄링
     scheduler.add_job(
         func=regenerate_all_recommendations,
-        trigger=CronTrigger(hour=3, minute=0),
+        trigger=CronTrigger(hour=3, minute=0, timezone=timezone("Asia/Seoul")),
         id='regenerate_redis_cache',
         name='Redis 추천+취향 캐시 재생성',
         replace_existing=True
@@ -176,7 +172,6 @@ def stop_scheduler(scheduler):
         scheduler.shutdown()
         logger.info("⏹️  Redis 스케줄러가 중지되었습니다")
 
-# 테스트용 함수들
 def test_cache_clear():
     """
     캐시 정리 함수 테스트 (개발용)
@@ -198,9 +193,8 @@ def test_user_fetch():
     logger.info("🧪 사용자 정보 가져오기 테스트 실행...")
     users = get_all_active_users_with_favorites()
     logger.info(f"📊 총 {len(users)}명의 활성 사용자 발견")
-    for member_id, favorites in list(users.items())[:3]:  # 처음 3명만 출력
+    for member_id, favorites in list(users.items())[:3]:
         logger.info(f"👤 사용자 {member_id}: {len(favorites)}개 좋아요")
 
 if __name__ == "__main__":
-    # 직접 실행 시 테스트
     test_user_fetch()
