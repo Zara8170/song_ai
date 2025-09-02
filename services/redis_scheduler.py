@@ -92,6 +92,11 @@ def regenerate_all_recommendations():
                 from core.recommendation_service import recommend_songs
                 result = recommend_songs(favorite_song_ids, cached_preference)
                 
+                if result is None:
+                    logger.error(f"   ❌ 사용자 {member_id}: 추천 서비스가 None을 반환했습니다")
+                    fail_count += 1
+                    continue
+                    
                 if "error" not in result:
                     logger.info(f"   ✅ 사용자 {member_id}: AI 추천 생성 성공")
                     
@@ -132,6 +137,9 @@ def regenerate_all_recommendations():
                     
             except Exception as e:
                 logger.error(f"   ❌ 사용자 {member_id}: 처리 중 예외 발생 - {e}")
+                logger.error(f"   📍 예외 유형: {type(e).__name__}")
+                import traceback
+                logger.error(f"   🔍 상세 스택 트레이스: {traceback.format_exc()}")
                 fail_count += 1
         
         # 5단계: 작업 완료 및 통계

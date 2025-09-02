@@ -1,10 +1,13 @@
 import json
+import logging
 from random import sample
 from langchain_openai import ChatOpenAI
 from config.settings import OPENAI_API_KEY
 from config.prompts import RECOMMEND_PROMPT, ANALYZE_PREFERENCE_PROMPT
 from pydantic import ValidationError
 from models.data_models import UserPreference, RecommendationResponse
+
+logger = logging.getLogger(__name__)
 
 def _get_title_artist_for_tagline(song: dict) -> tuple[str, str]:
     title_kr = song.get("title_kr", "")
@@ -41,13 +44,18 @@ def _analyze_user_preference(favorite_songs: list[dict]) -> dict:
         if not response or not response.content:
             return None
             
-        response = response.content.strip()
+        content = response.content
+        if content is None:
+            logger.warning("OpenAI API returned response with None content in _analyze_user_preference")
+            return None
+        response = content.strip()
         if "```" in response:
             response = response.split("```")[1]
         result = json.loads(response)
         validated = UserPreference(**result)
         return validated.dict()
-    except (json.JSONDecodeError, ValidationError):
+    except (json.JSONDecodeError, ValidationError) as e:
+        logger.error(f"Failed to parse user preference analysis: {e}")
         return None
 
 def _ai_recommend_songs(candidate_songs: list[dict], user_preference: dict, target_count: int = 20) -> list[dict]:
@@ -90,13 +98,18 @@ def _ai_recommend_songs(candidate_songs: list[dict], user_preference: dict, targ
         if not response or not response.content:
             return sample(candidate_songs, min(target_count, len(candidate_songs)))
             
-        response = response.content.strip()
+        content = response.content
+        if content is None:
+            logger.warning("OpenAI API returned response with None content in _ai_recommend_songs")
+            return sample(candidate_songs, min(target_count, len(candidate_songs)))
+        response = content.strip()
         if "```" in response:
             response = response.split("```")[1]
         result = json.loads(response)
         validated = RecommendationResponse(**result)
         return [song.dict() for song in validated.recommended_songs]
-    except (json.JSONDecodeError, ValidationError):
+    except (json.JSONDecodeError, ValidationError) as e:
+        logger.error(f"Failed to parse AI recommendation response: {e}")
         return sample(candidate_songs, min(target_count, len(candidate_songs)))
 
 def _make_tagline(label: str, songs: list[dict], user_preference: dict = None) -> str:
@@ -125,7 +138,11 @@ def _make_tagline(label: str, songs: list[dict], user_preference: dict = None) -
             label=f"{label} {pref_keywords}",
             sample_songs=sample_txt
         )
-        response = llm.invoke(prompt_text).content.strip()
+        llm_response = llm.invoke(prompt_text)
+        if not llm_response or not llm_response.content:
+            logger.warning(f"OpenAI API returned empty response for tagline generation (label: {label})")
+            return f"{label}의 매력적인 선곡 🎵"
+        response = llm_response.content.strip()
         
         tagline = response.strip('"').strip("'").strip()
         if '\n' in tagline:
@@ -134,5 +151,6 @@ def _make_tagline(label: str, songs: list[dict], user_preference: dict = None) -
         tagline = tagline.lstrip('- ').lstrip('• ').lstrip('* ').strip()
         
         return tagline if tagline else f"{label}의 매력적인 선곡 🎵"
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to generate tagline for label '{label}': {e}")
         return f"{label}의 매력적인 선곡 🎵"
