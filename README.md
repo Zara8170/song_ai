@@ -117,6 +117,13 @@ songs_ai/
 - **Docker Compose**: 다중 서비스 오케스트레이션
 - **Nginx**: 리버스 프록시 (프로덕션 환경)
 
+### 📊 모니터링 & 관측성
+
+- **Prometheus**: 메트릭 수집 및 저장
+- **Grafana**: 대시보드 및 시각화
+- **Redis Insight**: Redis 데이터베이스 모니터링
+- **Flower**: Celery 작업 큐 모니터링
+
 ## 🚀 빠른 시작
 
 ### 📋 사전 요구사항
@@ -188,6 +195,232 @@ POST /favorites/updated
   "song_data": {...}
 }
 ```
+
+## 📊 모니터링 & 관측성
+
+Songs AI는 프로덕션 환경에서의 안정적인 서비스 운영을 위해 종합적인 모니터링 시스템과 연동됩니다.
+
+### 🎯 모니터링 아키텍처
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Songs AI      │───▶│   VM Exporters  │───▶│  외부 Prometheus │
+│   Application   │    │   (메트릭 수집)  │    │   모니터링 서버   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│     Redis       │    │   Node Exporter │    │    Grafana      │
+│   (캐시 상태)    │    │  (시스템 리소스) │    │   대시보드       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 🛠 기존 모니터링 환경 연동
+
+현재 VM에 설정된 Exporter들을 통해 외부 모니터링 서버에서 Songs AI 서비스를 모니터링하고 있습니다.
+
+#### 🎯 현재 모니터링 현황
+
+✅ **활성화된 모니터링 요소들:**
+
+- **Node Exporter**: VM 시스템 리소스 모니터링 (CPU, 메모리, 디스크, 네트워크)
+- **외부 Prometheus**: 메트릭 수집 및 저장 서버 연동
+- **외부 Grafana**: 대시보드를 통한 시각화 및 알림
+- **Songs AI App**: `/metrics` 엔드포인트를 통한 애플리케이션 메트릭 노출
+
+#### 📡 메트릭 엔드포인트 노출
+
+Songs AI 애플리케이션에서 다음 엔드포인트를 통해 메트릭을 제공합니다:
+
+```bash
+# 애플리케이션 메트릭 확인
+curl http://localhost:8000/metrics
+
+# 시스템 메트릭 확인 (Node Exporter 통해 수집)
+curl http://localhost:9100/metrics
+```
+
+### 📈 Prometheus 메트릭
+
+#### 🎵 애플리케이션 메트릭
+
+- **추천 요청 수**: `songs_ai_recommendations_total`
+- **평균 응답 시간**: `songs_ai_recommendation_duration_seconds`
+- **AI 분석 성공률**: `songs_ai_ai_analysis_success_rate`
+- **캐시 히트율**: `songs_ai_cache_hit_rate`
+
+#### 🔧 시스템 메트릭
+
+- **CPU 사용률**: `cpu_usage_percent`
+- **메모리 사용량**: `memory_usage_bytes`
+- **디스크 I/O**: `disk_io_operations_total`
+- **네트워크 트래픽**: `network_bytes_total`
+
+### 📊 Grafana 대시보드
+
+#### 🎯 주요 대시보드
+
+1. **📈 Songs AI 서비스 개요**
+
+   - 전체 서비스 상태 및 핵심 지표
+   - 실시간 추천 요청 현황
+   - AI 분석 성능 메트릭
+
+2. **🧠 AI 추천 엔진 모니터링**
+
+   - OpenAI API 호출 통계
+   - 추천 알고리즘 성능 분석
+   - 사용자 취향 분석 정확도
+
+3. **💾 Redis 캐시 모니터링**
+
+   - Redis Insight를 통한 로컬 모니터링
+   - 캐시 데이터 및 키 현황 확인
+
+4. **⚙️ 시스템 리소스 모니터링**
+   - CPU, 메모리, 디스크 사용률
+   - 네트워크 트래픽 분석
+   - 컨테이너 상태 모니터링
+
+### 🔔 알림 및 알럿
+
+#### ⚠️ 중요 알럿 규칙
+
+- **서비스 다운**: 30초 이상 응답 없음
+- **높은 오류율**: 5분간 에러율 5% 초과
+- **메모리 부족**: 메모리 사용률 85% 초과
+- **캐시 실패**: Redis 연결 실패
+
+#### 📱 알림 채널
+
+- **Slack**: 실시간 알림 및 상태 업데이트
+- **Email**: 중요 이벤트 및 일일 리포트
+- **Webhook**: 외부 시스템 연동
+
+### 🛠 모니터링 접속 정보
+
+#### 📊 외부 모니터링 서버 연동
+
+현재 VM에 설정된 환경에서는 외부 모니터링 서버를 통해 모니터링이 진행됩니다:
+
+- **Prometheus**: 외부 모니터링 서버에서 VM의 Exporter들로부터 메트릭 수집
+- **Grafana**: 외부 서버의 대시보드에서 Songs AI 서비스 상태 확인
+- **Node Exporter**: VM 시스템 리소스 메트릭 제공 (포트: 9100)
+
+#### 💾 로컬 모니터링 도구
+
+- **Redis Insight**: http://localhost:5540 (Redis 데이터베이스 직접 모니터링)
+- **Flower (Celery)**: http://localhost:5555 (Celery 작업 큐 실시간 모니터링)
+
+### ⚙️ 모니터링 설정
+
+#### 🔧 외부 Prometheus 서버 설정 예시
+
+외부 모니터링 서버의 Prometheus에서 Songs AI VM을 모니터링하기 위한 설정:
+
+```yaml
+# prometheus.yml (외부 모니터링 서버)
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "songs-ai-app"
+    static_configs:
+      - targets: ["<VM_IP>:8000"] # Songs AI 애플리케이션
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+
+  - job_name: "songs-ai-system"
+    static_configs:
+      - targets: ["<VM_IP>:9100"] # Node Exporter
+```
+
+#### 📡 VM Exporter 상태 확인
+
+```bash
+# Node Exporter 상태 확인
+systemctl status node_exporter
+
+# Songs AI 애플리케이션 메트릭 엔드포인트 확인
+curl http://localhost:8000/metrics
+```
+
+### 🏥 헬스 체크
+
+#### 🔍 서비스 상태 확인
+
+```bash
+# API 서버 상태
+curl http://localhost:8000/health
+
+# Redis 상태
+docker exec redis redis-cli -a ${REDIS_PASSWORD} ping
+
+# 전체 서비스 상태
+docker-compose ps
+```
+
+#### 📊 메트릭 엔드포인트 확인
+
+```bash
+# Songs AI 애플리케이션 메트릭
+curl http://localhost:8000/metrics
+
+# Node Exporter 메트릭 (시스템 리소스)
+curl http://localhost:9100/metrics
+```
+
+#### 🔗 외부 모니터링 서버 연결 상태
+
+```bash
+# 외부 Prometheus에서 타겟 상태 확인
+curl http://<MONITORING_SERVER>:9090/api/v1/targets
+
+# Grafana 대시보드 접속 (외부 모니터링 서버)
+# http://<MONITORING_SERVER>:3000
+```
+
+### 🚨 트러블슈팅
+
+#### 일반적인 문제들
+
+1. **외부 모니터링 서버에서 메트릭을 수집하지 못할 때**
+
+   ```bash
+      # VM에서 Exporter 상태 확인
+   systemctl status node_exporter
+
+   # 방화벽 설정 확인 (포트 9100, 8000 오픈 필요)
+   sudo ufw status
+   sudo firewall-cmd --list-ports
+
+   # 네트워크 연결 테스트
+   telnet <VM_IP> 9100
+   ```
+
+2. **Songs AI 애플리케이션 메트릭이 노출되지 않을 때**
+
+   ```bash
+   # 애플리케이션 로그 확인
+   docker-compose logs api
+
+   # 메트릭 엔드포인트 직접 확인
+   curl http://localhost:8000/metrics
+
+   # 포트 바인딩 확인
+   netstat -tlnp | grep 8000
+   ```
+
+3. **외부 모니터링 서버 연결 확인**
+
+   ```bash
+   # 외부 Prometheus 타겟 상태 확인
+   curl http://<MONITORING_SERVER>:9090/api/v1/targets
+
+   # VM에서 외부 서버로 네트워크 테스트
+   ping <MONITORING_SERVER>
+   ```
 
 ## 🎨 프로젝트 하이라이트
 
