@@ -26,6 +26,10 @@ def _norm(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
+def _safe_strip(value: str | None) -> str:
+    """Safely strip a string, handling None values"""
+    return (value or "").strip()
+
 def _soft_match(a: str, b: str) -> bool:
     a, b = _norm(a), _norm(b)
     if not a or not b: return False
@@ -37,22 +41,22 @@ def _match_ai_recommendations_with_db(ai_recs: list[dict], candidate_songs: list
     used_ids = set()
 
     for ai_rec in ai_recs:
-        ai_title = ai_rec.get("title", "").strip() or ai_rec.get("title_kr", "").strip()
-        ai_artist = ai_rec.get("artist_kr", "").strip()
+        ai_title = _safe_strip(ai_rec.get("title")) or _safe_strip(ai_rec.get("title_kr"))
+        ai_artist = _safe_strip(ai_rec.get("artist_kr"))
         found = None
 
         for db_song in candidate_songs:
             if db_song.get("song_id") in used_ids: 
                 continue
             db_titles = [
-                db_song.get("title_kr", "").strip(),
-                db_song.get("title_en", "").strip(),
-                db_song.get("title_jp", "").strip(),
-                db_song.get("title_yomi", "").strip()
+                _safe_strip(db_song.get("title_kr")),
+                _safe_strip(db_song.get("title_en")),
+                _safe_strip(db_song.get("title_jp")),
+                _safe_strip(db_song.get("title_yomi"))
             ]
             db_artists = [
-                db_song.get("artist_kr", "").strip(),
-                db_song.get("artist", "").strip()
+                _safe_strip(db_song.get("artist_kr")),
+                _safe_strip(db_song.get("artist"))
             ]
             
             if ai_title in db_titles and ai_artist in db_artists:
@@ -64,14 +68,14 @@ def _match_ai_recommendations_with_db(ai_recs: list[dict], candidate_songs: list
                 if db_song.get("song_id") in used_ids: 
                     continue
                 title_match = any(_soft_match(ai_title, db_title) for db_title in [
-                    db_song.get("title_kr", ""),
-                    db_song.get("title_en", ""),
-                    db_song.get("title_jp", ""),
-                    db_song.get("title_yomi", "")
+                    db_song.get("title_kr") or "",
+                    db_song.get("title_en") or "",
+                    db_song.get("title_jp") or "",
+                    db_song.get("title_yomi") or ""
                 ])
                 artist_match = any(_soft_match(ai_artist, db_artist) for db_artist in [
-                    db_song.get("artist_kr", ""),
-                    db_song.get("artist", "")
+                    db_song.get("artist_kr") or "",
+                    db_song.get("artist") or ""
                 ])
                 
                 if title_match and artist_match:

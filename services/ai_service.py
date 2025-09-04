@@ -10,13 +10,13 @@ from models.data_models import UserPreference, RecommendationResponse
 logger = logging.getLogger(__name__)
 
 def _get_title_artist_for_tagline(song: dict) -> tuple[str, str]:
-    title_kr = song.get("title_kr", "")
-    title_en = song.get("title_en", "")
-    title_jp = song.get("title_jp", "")
-    title_yomi = song.get("title_yomi", "")
+    title_kr = song.get("title_kr") or ""
+    title_en = song.get("title_en") or ""
+    title_jp = song.get("title_jp") or ""
+    title_yomi = song.get("title_yomi") or ""
     title = title_kr.strip() or title_en.strip() or title_jp.strip() or title_yomi.strip() or "Unknown Title"
-    artist_kr = song.get("artist_kr", "")
-    artist = song.get("artist", "")
+    artist_kr = song.get("artist_kr") or ""
+    artist = song.get("artist") or ""
     artist_name = artist_kr.strip() or artist.strip() or "Unknown Artist"
     return title, artist_name
 
