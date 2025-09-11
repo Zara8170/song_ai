@@ -7,6 +7,8 @@
 Songs AI는 사용자의 음악 취향을 깊이 분석하여 개인화된 노래 추천을 제공하는 지능형 시스템입니다.
 OpenAI GPT 모델을 활용하여 사용자의 선호도를 이해하고, 수많은 곡 중에서 취향에 맞는 완벽한 선곡을 찾아드립니다.
 
+> **📦 마이크로서비스 아키텍처**: 이 레포지토리는 AI 추천 엔진을 담당하며, [메인 백엔드](https://github.com/Zara8170/songs_be), [프론트엔드](https://github.com/Zara8170/song_fe), [검색 엔진](https://github.com/Zara8170/song_elasticsearch)과 함께 완전한 음악 서비스를 구성합니다.
+
 ### 🎯 핵심 가치
 
 - **개인화**: 각 사용자의 고유한 음악 취향을 정확히 파악
@@ -36,7 +38,75 @@ OpenAI GPT 모델을 활용하여 사용자의 선호도를 이해하고, 수많
 
 ## 🏗 시스템 아키텍처
 
-### 📁 프로젝트 구조
+### 🌐 프로젝트 생태계
+
+Songs AI는 여러 개의 독립적인 레포지토리로 구성된 마이크로서비스 아키텍처를 채택하고 있습니다. 각 레포지토리는 특정 역할을 담당하며, 서로 연동되어 완전한 음악 추천 서비스를 제공합니다.
+
+#### 📦 주요 레포지토리
+
+| 레포지토리 | 역할 | 기술 스택 | 설명 |
+|-----------|------|-----------|------|
+| **🤖 [songs_ai](https://github.com/Zara8170/song_ai)** | AI 추천 엔진 | Python, FastAPI, OpenAI | 현재 레포지토리 - AI 기반 음악 추천 백엔드 |
+| **🎵 [songs_be](https://github.com/Zara8170/songs_be)** | 메인 백엔드 | Java, Spring Boot | 사용자 관리, 인증, 노래 데이터 관리 |
+| **🎨 [song_fe](https://github.com/Zara8170/song_fe)** | 프론트엔드 | React, TypeScript | 사용자 인터페이스 및 웹 애플리케이션 |
+| **🔍 [song_elasticsearch](https://github.com/Zara8170/song_elasticsearch)** | 검색 엔진 | Elasticsearch | 고성능 음악 검색 및 필터링 시스템 |
+
+#### 🔄 서비스 간 연동 구조
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        FE[🎨 song_fe<br/>React Frontend]
+    end
+    
+    subgraph "Backend Services"
+        BE[🎵 songs_be<br/>Spring Boot API]
+        AI[🤖 songs_ai<br/>AI Recommendation Engine]
+        ES[🔍 song_elasticsearch<br/>Search Engine]
+    end
+    
+    subgraph "Data Layer"
+        DB[(MySQL Database)]
+        REDIS[(Redis Cache)]
+        ES_DATA[(Elasticsearch Index)]
+    end
+    
+    FE -->|REST API| BE
+    FE -->|AI 추천 요청| AI
+    BE -->|검색 쿼리| ES
+    AI -->|데이터 조회| BE
+    AI -->|캐시 저장/조회| REDIS
+    BE -->|데이터 저장/조회| DB
+    ES -->|인덱스 관리| ES_DATA
+```
+
+#### 📋 각 레포지토리 상세 역할
+
+**🤖 [Songs AI (현재 레포지토리)](https://github.com/Zara8170/song_ai)**
+- OpenAI GPT를 활용한 지능형 음악 취향 분석
+- 개인화된 추천 알고리즘 엔진
+- Redis 캐싱을 통한 고성능 추천 서비스
+- Celery 기반 비동기 배치 처리
+
+**🎵 [Songs Backend](https://github.com/Zara8170/songs_be)**  
+- Spring Boot 기반 메인 백엔드 API 서버
+- 사용자 인증 및 권한 관리 (JWT, OAuth2)
+- 음악 메타데이터 및 사용자 데이터 관리
+- 플레이리스트 및 좋아요 기능 제공
+
+**🎨 [Songs Frontend](https://github.com/Zara8170/song_fe)**
+- React 기반 반응형 웹 애플리케이션
+- 직관적인 사용자 인터페이스 제공
+- 실시간 음악 검색 및 추천 결과 표시
+- 개인화된 플레이리스트 관리 기능
+
+**🔍 [Songs Elasticsearch](https://github.com/Zara8170/song_elasticsearch)**
+- Elasticsearch 기반 고성능 음악 검색 엔진
+- 다국어 검색 지원 (한국어, 일본어, 영어)
+- 초성 검색 및 오타 보정 기능
+- 실시간 검색 인덱싱 및 최적화
+
+### 📁 현재 레포지토리 구조 (songs_ai)
 
 ```
 songs_ai/
@@ -133,12 +203,12 @@ songs_ai/
 - MySQL Database
 - OpenAI API Key
 
-### ⚡ 간단 실행
+### ⚡ AI 추천 엔진만 실행
 
 ```bash
 # 저장소 클론
-git clone https://github.com/your-username/songs_ai.git
-cd songs_ai
+git clone https://github.com/Zara8170/song_ai.git
+cd song_ai
 
 # 의존성 설치
 pip install -r requirements.txt
@@ -149,6 +219,34 @@ cp .env.example .env
 
 # 서버 실행
 python main.py
+```
+
+### 🌟 전체 시스템 설정 (모든 레포지토리)
+
+완전한 Songs AI 서비스를 구동하려면 모든 레포지토리를 함께 설정해야 합니다:
+
+```bash
+# 1. 모든 레포지토리 클론
+git clone https://github.com/Zara8170/songs_be.git      # 메인 백엔드
+git clone https://github.com/Zara8170/song_ai.git       # AI 추천 엔진
+git clone https://github.com/Zara8170/song_fe.git       # 프론트엔드
+git clone https://github.com/Zara8170/song_elasticsearch.git  # 검색 엔진
+
+# 2. 각 서비스 의존성 설치 및 설정
+cd songs_be && ./gradlew build && cd ..
+cd song_ai && pip install -r requirements.txt && cd ..
+cd song_fe && npm install && cd ..
+cd song_elasticsearch && docker-compose up -d && cd ..
+
+# 3. 환경 변수 설정 (각 레포지토리)
+# songs_be/.env
+# song_ai/.env  
+# song_fe/.env
+
+# 4. 서비스 순차 실행
+cd songs_be && java -jar build/libs/songs_be.jar &
+cd song_ai && python main.py &
+cd song_fe && npm start &
 ```
 
 ### 🐳 Docker로 실행
@@ -491,9 +589,12 @@ Songs AI는 오픈소스 프로젝트입니다! 다음과 같은 방식으로 �
 
 프로젝트에 대한 문의나 협업 제안은 언제든 환영합니다!
 
-- **이메일**: your-email@example.com
-- **GitHub**: [@your-username](https://github.com/your-username)
-- **블로그**: [프로젝트 개발 블로그](https://your-blog.com)
+- **GitHub**: [@Zara8170](https://github.com/Zara8170)
+- **프로젝트 레포지토리들**:
+  - 🤖 [AI 추천 엔진](https://github.com/Zara8170/song_ai)
+  - 🎵 [메인 백엔드](https://github.com/Zara8170/songs_be)  
+  - 🎨 [프론트엔드](https://github.com/Zara8170/song_fe)
+  - 🔍 [검색 엔진](https://github.com/Zara8170/song_elasticsearch)
 
 ---
 
