@@ -111,7 +111,7 @@ graph TB
 - RabbitMQ에서 추천 요청을 비동기로 수신 및 처리
 - 개인화된 추천 알고리즘 엔진
 - 추천 결과를 Redis에 캐시 저장
-- Celery 기반 대용량 배치 처리 (스케줄링)
+- APScheduler 기반 정기적 배치 처리 (스케줄링)
 
 **🎵 [Songs Backend](https://github.com/Zara8170/songs_be)**
 
@@ -154,9 +154,9 @@ songs_ai/
 │   ├── cache_service.py   # Redis 캐시 관리
 │   └── redis_scheduler.py # 스케줄링 서비스
 │
-├── ⚙️ workers/            # 백그라운드 작업 처리
-│   ├── celery_app.py      # Celery 설정
-│   └── tasks.py           # 비동기 작업 정의
+├── ⚙️ workers/            # 백그라운드 작업 처리 (향후 확장 예정)
+│   ├── celery_app.py      # 미사용
+│   └── tasks.py           # 미사용
 │
 ├── 📊 models/             # 데이터 모델
 │   ├── data_models.py     # 비즈니스 도메인 모델
@@ -184,10 +184,11 @@ songs_ai/
 
 ### 🎵 추천 알고리즘의 특징
 
+- **AI 기반 분석**: OpenAI GPT를 활용한 지능형 취향 분석
 - **콘텐츠 기반 필터링**: 곡의 장르, 분위기, 템포 등 음악적 특성 분석
 - **협업 필터링**: 유사한 취향 사용자들의 선호도 패턴 활용
 - **하이브리드 접근**: 다양한 추천 기법을 조합하여 정확도 향상
-- **실시간 학습**: 사용자 피드백을 즉시 반영하여 추천 품질 개선
+- **캐시 기반 최적화**: Redis를 통한 빠른 추천 결과 제공
 
 ## 🔧 기술 스택
 
@@ -212,9 +213,8 @@ songs_ai/
 ### ⚙️ 백그라운드 처리 & 메시지 큐
 
 - **RabbitMQ**: 서비스 간 비동기 메시지 브로커
-- **Celery**: 분산 작업 큐 시스템
-- **Redis Broker**: Celery 작업 메시지 브로커
 - **APScheduler**: 정기적인 배치 작업 스케줄링
+- **Redis**: 작업 결과 캐싱 및 임시 데이터 저장
 
 ### 🐳 인프라 & 배포
 
@@ -443,7 +443,7 @@ curl http://localhost:9100/metrics
 #### 💾 로컬 모니터링 도구
 
 - **Redis Insight**: http://localhost:5540 (Redis 데이터베이스 직접 모니터링)
-- **Flower (Celery)**: http://localhost:5555 (Celery 작업 큐 실시간 모니터링)
+- **APScheduler 로그**: 정기적 배치 작업 실행 상태 모니터링
 
 ### ⚙️ 모니터링 설정
 
@@ -584,7 +584,7 @@ curl http://<MONITORING_SERVER>:9090/api/v1/targets
 - **다단계 캐싱**: L1(메모리) + L2(Redis) 캐시 전략
 - **비동기 메시지 큐**: RabbitMQ를 통한 Non-blocking 추천 처리
 - **비동기 처리**: 모든 I/O 작업을 비동기로 처리하여 성능 극대화
-- **배치 최적화**: 여러 사용자 요청을 배치로 처리하여 효율성 향상
+- **스케줄링 최적화**: APScheduler를 통한 정기적 캐시 갱신으로 효율성 향상
 
 #### 📈 확장성 설계
 
@@ -598,6 +598,7 @@ curl http://<MONITORING_SERVER>:9090/api/v1/targets
 
 - [ ] **Hugging Face 모델 통합**: OpenAI 대신 오픈소스 모델로 전환
 - [ ] **실시간 협업 필터링**: 사용자 간 실시간 취향 매칭
+- [ ] **Celery 통합**: 대용량 배치 처리를 위한 분산 작업 큐 도입
 - [ ] **모바일 앱 연동**: iOS/Android 앱과의 API 연동
 
 ### 🌟 중기 목표 (6개월)
