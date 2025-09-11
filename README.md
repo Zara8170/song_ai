@@ -56,46 +56,40 @@ Songs AI는 여러 개의 독립적인 레포지토리로 구성된 마이크로
 ```mermaid
 graph TB
     subgraph "Frontend Layer"
-        FE[🎨 song_fe<br/>React Frontend]
+        FE["🎨 song_fe<br/>React Frontend"]
     end
 
     subgraph "Backend Services"
-        BE[🎵 songs_be<br/>Spring Boot API]
-        AI[🤖 songs_ai<br/>AI Recommendation Engine]
-        ES[🔍 song_elasticsearch<br/>Search Engine]
+        BE["🎵 songs_be<br/>Spring Boot API"]
+        AI["🤖 songs_ai<br/>AI Recommendation Engine"]
+        ES["🔍 song_elasticsearch<br/>Search Engine"]
     end
 
     subgraph "Message Queue"
-        RMQ[🐰 RabbitMQ<br/>Message Broker]
+        RMQ["🐰 RabbitMQ<br/>Message Broker"]
     end
 
     subgraph "Data Layer"
-        DB[(MySQL Database)]
-        REDIS[(Redis Cache)]
-        ES_DATA[(Elasticsearch Index)]
+        DB[("MySQL Database")]
+        REDIS[("Redis Cache")]
+        ES_DATA[("Elasticsearch Index")]
     end
 
-    %% 프론트엔드 → 백엔드 연동
-    FE -->|REST API 요청| BE
-    FE -->|AI 추천 요청<br/>(비동기)| BE
+    FE -->|"REST API Request"| BE
+    FE -->|"AI Recommendation Request<br/>(Async)"| BE
 
-    %% 백엔드 → 메시지 큐 → AI 엔진
-    BE -->|추천 작업 큐잉| RMQ
-    RMQ -->|비동기 처리| AI
+    BE -->|"Queue Recommendation Task"| RMQ
+    RMQ -->|"Async Processing"| AI
 
-    %% AI 엔진 → 데이터 저장
-    AI -->|추천 결과 캐시| REDIS
-    AI -->|메타데이터 조회| BE
+    AI -->|"Cache Results"| REDIS
+    AI -->|"Metadata Query"| BE
 
-    %% 백엔드 → Redis에서 캐시된 결과 조회
-    BE -->|캐시된 추천 결과 조회| REDIS
+    BE -->|"Get Cached Results"| REDIS
 
-    %% 기타 데이터 연동
-    BE -->|검색 쿼리| ES
-    BE -->|사용자/노래 데이터| DB
-    ES -->|인덱스 관리| ES_DATA
+    BE -->|"Search Query"| ES
+    BE -->|"User/Song Data"| DB
+    ES -->|"Index Management"| ES_DATA
 
-    %% 스타일링
     classDef frontend fill:#e1f5fe
     classDef backend fill:#f3e5f5
     classDef ai fill:#e8f5e8
@@ -217,7 +211,7 @@ songs_ai/
 
 ### ⚙️ 백그라운드 처리 & 메시지 큐
 
-- **RabbitMQ**: 서비스 간 비동기 메시지 브로커 
+- **RabbitMQ**: 서비스 간 비동기 메시지 브로커
 - **Celery**: 분산 작업 큐 시스템
 - **Redis Broker**: Celery 작업 메시지 브로커
 - **APScheduler**: 정기적인 배치 작업 스케줄링
