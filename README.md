@@ -44,12 +44,12 @@ Songs AI는 여러 개의 독립적인 레포지토리로 구성된 마이크로
 
 #### 📦 주요 레포지토리
 
-| 레포지토리 | 역할 | 기술 스택 | 설명 |
-|-----------|------|-----------|------|
-| **🤖 [songs_ai](https://github.com/Zara8170/song_ai)** | AI 추천 엔진 | Python, FastAPI, OpenAI | 현재 레포지토리 - AI 기반 음악 추천 백엔드 |
-| **🎵 [songs_be](https://github.com/Zara8170/songs_be)** | 메인 백엔드 | Java, Spring Boot | 사용자 관리, 인증, 노래 데이터 관리 |
-| **🎨 [song_fe](https://github.com/Zara8170/song_fe)** | 프론트엔드 | React, TypeScript | 사용자 인터페이스 및 웹 애플리케이션 |
-| **🔍 [song_elasticsearch](https://github.com/Zara8170/song_elasticsearch)** | 검색 엔진 | Elasticsearch | 고성능 음악 검색 및 필터링 시스템 |
+| 레포지토리                                                                  | 역할         | 기술 스택               | 설명                                       |
+| --------------------------------------------------------------------------- | ------------ | ----------------------- | ------------------------------------------ |
+| **🤖 [songs_ai](https://github.com/Zara8170/song_ai)**                      | AI 추천 엔진 | Python, FastAPI, OpenAI | 현재 레포지토리 - AI 기반 음악 추천 백엔드 |
+| **🎵 [songs_be](https://github.com/Zara8170/songs_be)**                     | 메인 백엔드  | Java, Spring Boot       | 사용자 관리, 인증, 노래 데이터 관리        |
+| **🎨 [song_fe](https://github.com/Zara8170/song_fe)**                       | 프론트엔드   | React, TypeScript       | 사용자 인터페이스 및 웹 애플리케이션       |
+| **🔍 [song_elasticsearch](https://github.com/Zara8170/song_elasticsearch)** | 검색 엔진    | Elasticsearch           | 고성능 음악 검색 및 필터링 시스템          |
 
 #### 🔄 서비스 간 연동 구조
 
@@ -58,49 +58,85 @@ graph TB
     subgraph "Frontend Layer"
         FE[🎨 song_fe<br/>React Frontend]
     end
-    
+
     subgraph "Backend Services"
         BE[🎵 songs_be<br/>Spring Boot API]
         AI[🤖 songs_ai<br/>AI Recommendation Engine]
         ES[🔍 song_elasticsearch<br/>Search Engine]
     end
-    
+
+    subgraph "Message Queue"
+        RMQ[🐰 RabbitMQ<br/>Message Broker]
+    end
+
     subgraph "Data Layer"
         DB[(MySQL Database)]
         REDIS[(Redis Cache)]
         ES_DATA[(Elasticsearch Index)]
     end
-    
-    FE -->|REST API| BE
-    FE -->|AI 추천 요청| AI
+
+    %% 프론트엔드 → 백엔드 연동
+    FE -->|REST API 요청| BE
+    FE -->|AI 추천 요청<br/>(비동기)| BE
+
+    %% 백엔드 → 메시지 큐 → AI 엔진
+    BE -->|추천 작업 큐잉| RMQ
+    RMQ -->|비동기 처리| AI
+
+    %% AI 엔진 → 데이터 저장
+    AI -->|추천 결과 캐시| REDIS
+    AI -->|메타데이터 조회| BE
+
+    %% 백엔드 → Redis에서 캐시된 결과 조회
+    BE -->|캐시된 추천 결과 조회| REDIS
+
+    %% 기타 데이터 연동
     BE -->|검색 쿼리| ES
-    AI -->|데이터 조회| BE
-    AI -->|캐시 저장/조회| REDIS
-    BE -->|데이터 저장/조회| DB
+    BE -->|사용자/노래 데이터| DB
     ES -->|인덱스 관리| ES_DATA
+
+    %% 스타일링
+    classDef frontend fill:#e1f5fe
+    classDef backend fill:#f3e5f5
+    classDef ai fill:#e8f5e8
+    classDef data fill:#fff3e0
+    classDef queue fill:#fce4ec
+
+    class FE frontend
+    class BE,ES backend
+    class AI ai
+    class DB,REDIS,ES_DATA data
+    class RMQ queue
 ```
 
 #### 📋 각 레포지토리 상세 역할
 
 **🤖 [Songs AI (현재 레포지토리)](https://github.com/Zara8170/song_ai)**
-- OpenAI GPT를 활용한 지능형 음악 취향 분석
-- 개인화된 추천 알고리즘 엔진
-- Redis 캐싱을 통한 고성능 추천 서비스
-- Celery 기반 비동기 배치 처리
 
-**🎵 [Songs Backend](https://github.com/Zara8170/songs_be)**  
+- OpenAI GPT를 활용한 지능형 음악 취향 분석
+- RabbitMQ에서 추천 요청을 비동기로 수신 및 처리
+- 개인화된 추천 알고리즘 엔진
+- 추천 결과를 Redis에 캐시 저장
+- Celery 기반 대용량 배치 처리 (스케줄링)
+
+**🎵 [Songs Backend](https://github.com/Zara8170/songs_be)**
+
 - Spring Boot 기반 메인 백엔드 API 서버
 - 사용자 인증 및 권한 관리 (JWT, OAuth2)
 - 음악 메타데이터 및 사용자 데이터 관리
+- RabbitMQ를 통한 AI 추천 작업 큐잉 및 관리
+- Redis에서 캐시된 추천 결과 조회 및 제공
 - 플레이리스트 및 좋아요 기능 제공
 
 **🎨 [Songs Frontend](https://github.com/Zara8170/song_fe)**
+
 - React 기반 반응형 웹 애플리케이션
 - 직관적인 사용자 인터페이스 제공
 - 실시간 음악 검색 및 추천 결과 표시
 - 개인화된 플레이리스트 관리 기능
 
 **🔍 [Songs Elasticsearch](https://github.com/Zara8170/song_elasticsearch)**
+
 - Elasticsearch 기반 고성능 음악 검색 엔진
 - 다국어 검색 지원 (한국어, 일본어, 영어)
 - 초성 검색 및 오타 보정 기능
@@ -142,11 +178,15 @@ songs_ai/
 
 ### 🔄 추천 프로세스
 
-1. **사용자 데이터 수집**: 좋아요, 재생 이력, 평점 데이터 수집
-2. **AI 취향 분석**: GPT 모델이 사용자의 음악적 선호도를 자연어로 분석
-3. **후보군 필터링**: 데이터베이스에서 취향과 관련된 곡들을 사전 필터링
-4. **지능형 선별**: AI가 후보 곡들을 평가하여 최적의 추천 리스트 생성
-5. **개인화 랭킹**: 사용자별 가중치를 적용하여 최종 순위 결정
+1. **사용자 추천 요청**: 프론트엔드에서 백엔드로 AI 추천 요청
+2. **비동기 작업 큐잉**: 백엔드가 RabbitMQ에 추천 작업을 큐잉
+3. **AI 엔진 처리**: Songs AI가 RabbitMQ에서 작업을 수신하여 처리
+4. **사용자 데이터 수집**: 좋아요, 재생 이력, 평점 데이터 수집
+5. **AI 취향 분석**: GPT 모델이 사용자의 음악적 선호도를 자연어로 분석
+6. **후보군 필터링**: 데이터베이스에서 취향과 관련된 곡들을 사전 필터링
+7. **지능형 선별**: AI가 후보 곡들을 평가하여 최적의 추천 리스트 생성
+8. **캐시 저장**: 완성된 추천 결과를 Redis에 저장
+9. **결과 조회**: 백엔드가 Redis에서 캐시된 추천 결과를 조회하여 응답
 
 ### 🎵 추천 알고리즘의 특징
 
@@ -175,10 +215,11 @@ songs_ai/
 - **Redis**: 추천 결과 캐싱 및 세션 관리
 - **PyMySQL**: 데이터베이스 연결 및 ORM
 
-### ⚙️ 백그라운드 처리
+### ⚙️ 백그라운드 처리 & 메시지 큐
 
+- **RabbitMQ**: 서비스 간 비동기 메시지 브로커 
 - **Celery**: 분산 작업 큐 시스템
-- **Redis Broker**: 작업 메시지 브로커
+- **Redis Broker**: Celery 작업 메시지 브로커
 - **APScheduler**: 정기적인 배치 작업 스케줄링
 
 ### 🐳 인프라 & 배포
@@ -240,7 +281,7 @@ cd song_elasticsearch && docker-compose up -d && cd ..
 
 # 3. 환경 변수 설정 (각 레포지토리)
 # songs_be/.env
-# song_ai/.env  
+# song_ai/.env
 # song_fe/.env
 
 # 4. 서비스 순차 실행
@@ -547,6 +588,7 @@ curl http://<MONITORING_SERVER>:9090/api/v1/targets
 #### ⚡ 빠른 응답 시간
 
 - **다단계 캐싱**: L1(메모리) + L2(Redis) 캐시 전략
+- **비동기 메시지 큐**: RabbitMQ를 통한 Non-blocking 추천 처리
 - **비동기 처리**: 모든 I/O 작업을 비동기로 처리하여 성능 극대화
 - **배치 최적화**: 여러 사용자 요청을 배치로 처리하여 효율성 향상
 
@@ -592,7 +634,7 @@ Songs AI는 오픈소스 프로젝트입니다! 다음과 같은 방식으로 �
 - **GitHub**: [@Zara8170](https://github.com/Zara8170)
 - **프로젝트 레포지토리들**:
   - 🤖 [AI 추천 엔진](https://github.com/Zara8170/song_ai)
-  - 🎵 [메인 백엔드](https://github.com/Zara8170/songs_be)  
+  - 🎵 [메인 백엔드](https://github.com/Zara8170/songs_be)
   - 🎨 [프론트엔드](https://github.com/Zara8170/song_fe)
   - 🔍 [검색 엔진](https://github.com/Zara8170/song_elasticsearch)
 
