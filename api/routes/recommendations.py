@@ -16,6 +16,24 @@ router = APIRouter(prefix="/recommend", tags=["recommendations"])
 async def recommend(req: RecommendationRequest):
     """사용자의 좋아하는 곡을 기반으로 추천을 생성합니다."""
     try:
+        # 먼저 Redis 캐시에서 기존 추천 결과 확인
+        cached_data = load_recommendation_cache(req.memberId)
+        
+        if cached_data:
+            # 캐시된 데이터의 favorite_song_ids와 현재 요청이 동일한지 확인
+            cached_favorites = cached_data.get("favorite_song_ids", [])
+            current_favorites = req.favorite_song_ids or []
+            
+            # 정렬하여 비교 (순서 무관)
+            if sorted(cached_favorites) == sorted(current_favorites):
+                # 캐시된 데이터가 유효하면 바로 반환
+                return RecommendationResponse(
+                    status="completed",
+                    message="캐시된 추천 결과를 반환합니다.",
+                    generated_date=cached_data.get("generated_date", datetime.now().strftime("%Y-%m-%d"))
+                )
+        
+        # 캐시된 데이터가 없으면 새로 분석 수행
         result = recommend_songs(req.favorite_song_ids)
         today = datetime.now().strftime("%Y-%m-%d")
         
@@ -26,7 +44,7 @@ async def recommend(req: RecommendationRequest):
             "generated_date": today,
         }
         
-        # 캐시에 저장
+        # 새로 생성한 결과를 캐시에 저장
         save_recommendation_cache(req.memberId, cache_data)
         
         return RecommendationResponse(
