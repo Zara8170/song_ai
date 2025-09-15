@@ -136,36 +136,126 @@ graph TB
 - 초성 검색 및 오타 보정 기능
 - 실시간 검색 인덱싱 및 최적화
 
-### 📁 현재 레포지토리 구조 (songs_ai)
+### 🚀 CI/CD 배포 아키텍처
 
+Songs AI는 GitHub Actions를 통한 자동화된 CI/CD 파이프라인과 Google Cloud Platform 기반의 배포 아키텍처를 사용합니다.
+
+![CI/CD 배포 아키텍처](./docs/images/cicd-architecture.png)
+
+#### 🛠️ 배포 인프라 상세
+
+| 구성 요소                 | 기술                     | 설명                                   |
+| ------------------------- | ------------------------ | -------------------------------------- |
+| **🔄 CI/CD**              | GitHub Actions           | 자동화된 빌드, 테스트, 배포 파이프라인 |
+| **🏛️ Container Registry** | Google Artifact Registry | Docker 이미지 저장 및 버전 관리        |
+| **☁️ 클라우드 플랫폼**    | Google Cloud Platform    | VM 인스턴스 및 네트워크 인프라         |
+| **🖥️ 배포 환경**          | GCP Compute Engine       | Ubuntu VM에서 Docker Compose 실행      |
+| **🐳 컨테이너화**         | Docker + Docker Compose  | 멀티 서비스 컨테이너 오케스트레이션    |
+
+#### 🔐 보안 및 인증
+
+**GitHub Secrets 관리:**
+
+- `GCP_SERVICE_ACCOUNT_KEY`: Google Cloud 서비스 계정 인증
+- `AI_DOCKER_IMAGE_NAME`: Artifact Registry 이미지 경로
+- `GCP_VM_HOST`: 배포 대상 VM IP 주소
+- `GCP_VM_USER`: VM SSH 사용자명
+- `GCP_VM_SSH_PRIVATE_KEY`: SSH 개인키
+- `AR_PULL_KEY_JSON_B64`: Registry Pull 인증키
+
+**보안 기능:**
+
+- 🔒 SSH 키 기반 인증
+- 🔐 Google Cloud IAM 권한 관리
+- 🛡️ Artifact Registry 접근 제어
+- 🔑 환경 변수 암호화 저장
+
+#### 🚀 자동 배포 프로세스
+
+1. **🎯 트리거**: `main` 브랜치 Push 또는 수동 실행
+2. **🏗️ 빌드**: Dockerfile 기반 이미지 빌드
+3. **🔍 인증**: Google Cloud 서비스 계정으로 인증
+4. **📤 푸시**: Artifact Registry에 이미지 업로드 (재시도 로직 포함)
+5. **🚁 배포**: SSH를 통해 GCP VM에 자동 배포
+6. **🔄 서비스 재시작**: Docker Compose로 무중단 배포
+
+#### 🐳 컨테이너 서비스 구성
+
+**배포되는 서비스들:**
+
+| 서비스               | 포트 | 역할                 | 설정                  |
+| -------------------- | ---- | -------------------- | --------------------- |
+| **🎵 API Server**    | 8000 | FastAPI 웹 서버      | uvicorn + 자동 재시작 |
+| **⚙️ Celery Worker** | -    | 비동기 작업 처리     | 백그라운드 태스크     |
+| **🌺 Flower**        | 5555 | Celery 모니터링      | 작업 큐 상태 확인     |
+| **💾 Redis**         | 6379 | 캐시 & 메시지 브로커 | 데이터 영속화 설정    |
+| **📊 Redis Insight** | 5540 | Redis 관리 UI        | 캐시 데이터 모니터링  |
+
+#### 🎛️ 환경 설정 관리
+
+**환경 변수 구성:**
+
+```bash
+# AI 서비스 설정
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4
+
+# 데이터베이스 연결
+DATABASE_URL=mysql://...
+REDIS_URL=redis://...
+REDIS_PASSWORD=***
+
+# 서비스 모니터링
+FLOWER_BASIC_AUTH=user:password
+
+# Docker 이미지
+AI_DOCKER_IMAGE_NAME=asia-northeast3-docker.pkg.dev/...
 ```
-songs_ai/
-├── 🌐 api/                 # FastAPI 웹 애플리케이션
-│   ├── main.py            # API 서버 진입점
-│   ├── app.py             # FastAPI 앱 설정
-│   └── routes/            # REST API 엔드포인트
-│
-├── 🧠 core/               # 핵심 비즈니스 로직
-│   └── recommendation_service.py  # 추천 알고리즘 엔진
-│
-├── 🔌 services/           # 외부 서비스 연동 레이어
-│   ├── ai_service.py      # OpenAI GPT 연동
-│   ├── database_service.py # 음악 데이터베이스 연동
-│   ├── cache_service.py   # Redis 캐시 관리
-│   └── redis_scheduler.py # 스케줄링 서비스
-│
-├── ⚙️ workers/            # 백그라운드 작업 처리 (향후 확장 예정)
-│   ├── celery_app.py      # 미사용
-│   └── tasks.py           # 미사용
-│
-├── 📊 models/             # 데이터 모델
-│   ├── data_models.py     # 비즈니스 도메인 모델
-│   └── api_models.py      # API 스키마
-│
-└── 🛠 config/             # 시스템 설정
-    ├── settings.py        # 환경 설정
-    ├── prompts.py         # AI 프롬프트 템플릿
-    └── redis.py           # Redis 연결 설정
+
+#### 🔧 배포 최적화 기능
+
+**성능 최적화:**
+
+- 🚀 이미지 레이어 캐싱으로 빌드 시간 단축
+- 🔄 Docker 이미지 재시도 로직 (최대 5회)
+- 🧹 자동 이미지 정리로 디스크 공간 관리
+- ⚡ 무중단 서비스 재시작 (force-recreate)
+
+**안정성 보장:**
+
+- 🏥 Health Check 기반 서비스 의존성 관리
+- 🔁 자동 재시작 정책 (unless-stopped)
+- 📊 서비스 상태 모니터링 대시보드
+- 🛡️ 실패 시 자동 롤백 지원
+
+#### 📋 배포 명령어
+
+**수동 배포:**
+
+```bash
+# VM에서 직접 배포
+cd ~/song_ai
+git pull origin main
+docker compose down --remove-orphans
+docker compose pull
+docker compose up -d --force-recreate
+
+# 서비스 상태 확인
+docker compose ps
+docker compose logs -f api
+```
+
+**로컬 개발 환경:**
+
+```bash
+# 로컬에서 전체 스택 실행
+docker compose up -d
+
+# 특정 서비스만 재시작
+docker compose restart api
+
+# 로그 모니터링
+docker compose logs -f
 ```
 
 ## 💡 작동 원리
